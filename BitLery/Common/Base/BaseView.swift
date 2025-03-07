@@ -1,5 +1,5 @@
 //
-//  BaseViewController.swift
+//  BaseView.swift
 //  BitLery
 //
 //  Created by 정인선 on 3/6/25.
@@ -7,16 +7,9 @@
 
 import UIKit
 
-class BaseViewController: UIViewController {
-    let navigationBar = CustomNavigationBar()
-    
-    init() {
-        super.init(nibName: nil, bundle: nil)
-    }
-    
-    override func viewDidLoad() {
-        view.backgroundColor = .systemBackground
-        configureNavigation()
+class BaseView: UIView {
+    override init(frame: CGRect) {
+        super.init(frame: frame)
         configureUI()
     }
     
@@ -29,13 +22,9 @@ class BaseViewController: UIViewController {
     func configureHierarchy() { }
     func configureLayout() { }
     func configureView() { }
-    func configureNavigation() {
-        navigationController?.setNavigationBarHidden(true, animated: false)
-    }
     
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 }
-
