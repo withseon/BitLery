@@ -10,11 +10,11 @@ import RxSwift
 import RxCocoa
 
 enum NetworkManager {
-    static func NetworkManager<R: RequestType, T: Decodable>(router: R, response: T.Type) -> Single<Result<T, NetworkError>> {
+    static func executeFetch<R: RequestType, T: Decodable>(router: R, response: T.Type) -> Observable<Result<T, NetworkError>> {
         return Single.create { value in
             URLSession.shared.dataTask(with: router.request) { data, response, error in
-                if let _ = error {
-                    value(.success(.failure(.transport)))
+                if let error {
+                    value(.success(.failure(.transport(error))))
                 }
                 
                 if let response = response as? HTTPURLResponse,
@@ -26,8 +26,7 @@ enum NetworkManager {
                             let result = try decoder.decode(T.self, from: data)
                             value(.success(.success(result)))
                         } catch {
-                            print("❌ Network Response Decoding Error:: \(error)")
-                            value(.success(.failure(.decoding)))
+                            value(.success(.failure(.decoding(error))))
                         }
                     } else {
                         value(.success(.failure(.serverData(data: data, statusCode: response.statusCode))))
@@ -37,8 +36,7 @@ enum NetworkManager {
                 }
             }.resume()
             return Disposables.create()
-
-        }
+        }.asObservable()
     }
 }
 
