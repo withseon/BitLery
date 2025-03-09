@@ -9,7 +9,8 @@ import Foundation
 
 enum NetworkError: Error {
     case transport(_ error: Error)
-    case serverData(data: Data, statusCode: Int)
+    case server(error: APIErrorResponse, statusCode: Int)
+    case decodingServer(error: Error, statusCode: Int)
     case missingData
     case decoding(_ error: Error)
     
@@ -17,8 +18,10 @@ enum NetworkError: Error {
         switch self {
         case .transport:
             return "Network Error:: 오류 발생"
-        case .serverData( _, let statusCode):
-            return "Network Error:: API 오류 StatusCode -\(statusCode)"
+        case .server(let error, let statusCode):
+            return "Network Error:: \(error.errorMessage) (상태코드 - \(statusCode))"
+        case .decodingServer(statusCode: let statusCode):
+            return "Network Error:: 상태 코드 - \(statusCode)"
         case .missingData:
             return "Network Error:: 데이터 없음"
         case .decoding:
@@ -30,8 +33,10 @@ enum NetworkError: Error {
         switch self {
         case .transport(let error):
             return "❌ Network Error:: Transport - \(error)"
-        case .serverData(_, let statusCode):
-            return "❌ Network Error:: serverData - \(statusCode)"
+        case .server(let error, let statusCode):
+            return "❌ Network Error:: serverError(statusCode: \(statusCode) - \(error)"
+        case .decodingServer(let error, let statusCode):
+            return "❌ Network Error:: decodingServer(statusCode: \(statusCode) - \(error)"
         case .missingData:
             return "❌ Network Error:: MissingData"
         case .decoding(let error):

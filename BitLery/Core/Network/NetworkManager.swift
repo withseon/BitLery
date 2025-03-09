@@ -14,7 +14,9 @@ enum NetworkManager {
         return Single.create { value in
             URLSession.shared.dataTask(with: router.request) { data, response, error in
                 if let error {
-                    value(.success(.failure(.transport(error))))
+                    let networkError = NetworkError.transport(error)
+                    value(.success(.failure(networkError)))
+                    print(networkError.debugMessage)
                 }
                 
                 if let response = response as? HTTPURLResponse,
@@ -26,10 +28,23 @@ enum NetworkManager {
                             let result = try decoder.decode(T.self, from: data)
                             value(.success(.success(result)))
                         } catch {
-                            value(.success(.failure(.decoding(error))))
+                            let networkError = NetworkError.decoding(error)
+                            value(.success(.failure(networkError)))
+                            print(networkError.debugMessage)
                         }
                     } else {
-                        value(.success(.failure(.serverData(data: data, statusCode: response.statusCode))))
+                        do {
+                            let decoder = JSONDecoder()
+                            decoder.keyDecodingStrategy = .convertFromSnakeCase
+                            let result = try decoder.decode(APIErrorResponse.self, from: data)
+                            let networkError = NetworkError.server(error: result, statusCode: response.statusCode)
+                            value(.success(.failure(networkError)))
+                            print(networkError.debugMessage)
+                        } catch {
+                            let networkError = NetworkError.decodingServer(error: error, statusCode: response.statusCode)
+                            value(.success(.failure(networkError)))
+                            print(networkError.debugMessage)
+                        }
                     }
                 } else {
                     value(.success(.failure(.missingData)))
@@ -39,4 +54,3 @@ enum NetworkManager {
         }.asObservable()
     }
 }
-
