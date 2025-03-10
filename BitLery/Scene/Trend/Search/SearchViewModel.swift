@@ -13,7 +13,9 @@ final class SearchViewModel: BaseViewModel {
     private let searchText: BehaviorRelay<String>
     var disposeBag = DisposeBag()
     
+    private let showIndicatorTrigger = BehaviorRelay(value: true)
     private let searchCoinData = BehaviorRelay(value: [SearchCoin]())
+    private let collectionHiddenTrigger = BehaviorRelay(value: false)
     private let dialogTrigger = PublishRelay<(message: String, buttonTitle: String)?>()
     
     init(_ searchText: String) {
@@ -27,9 +29,11 @@ final class SearchViewModel: BaseViewModel {
         let selectedCoin: ControlEvent<SearchCoin>
     }
     struct Output {
+        let showIndicatorTrigger: Driver<Bool>
         let setUITrigger: Observable<String>
         let popTrigger: PublishRelay<Void>
         let searchCoinData: Driver<[SearchCoin]>
+        let collectionHiddenTrigger: Driver<Bool>
         let pushDetailTrigger: PublishRelay<CoinBasicInfo>
         let dialogTrigger: Driver<(message: String, buttonTitle: String)?>
     }
@@ -40,8 +44,10 @@ final class SearchViewModel: BaseViewModel {
         
         // MARK: - Trend 뷰에서 받은 검색어를 통한 검색
         searchText
-            .debug("searchText")
             .bind(with: self) { owner, text in
+                if !owner.showIndicatorTrigger.value {
+                    owner.showIndicatorTrigger.accept(true)
+                }
                 owner.fetchSearchData(text)
             }
             .dispose()
@@ -74,9 +80,11 @@ final class SearchViewModel: BaseViewModel {
             }
             .disposed(by: disposeBag)
         
-        return Output(setUITrigger: Observable.just(searchText.value),
+        return Output(showIndicatorTrigger: showIndicatorTrigger.asDriver(),
+                      setUITrigger: Observable.just(searchText.value),
                       popTrigger: popTrigger,
                       searchCoinData: searchCoinData.asDriver(),
+                      collectionHiddenTrigger: collectionHiddenTrigger.asDriver(),
                       pushDetailTrigger: pushDetailTrigger,
                       dialogTrigger: dialogTrigger.asDriver(onErrorJustReturn: nil))
     }
@@ -92,10 +100,16 @@ extension SearchViewModel {
         .bind(with: self) { owner, result in
             switch result {
             case .success(let response):
-                owner.searchCoinData.accept(response.coins.map { $0.asSearchCoin })
+                if response.coins.isEmpty {
+                    owner.collectionHiddenTrigger.accept(true)
+                } else {
+                    owner.collectionHiddenTrigger.accept(false)
+                    owner.searchCoinData.accept(response.coins.map { $0.asSearchCoin })
+                }
             case .failure(let error):
                 owner.dialogTrigger.accept((error.message, "확인"))
             }
+            owner.showIndicatorTrigger.accept(false)
         }
         .disposed(by: disposeBag)
     }

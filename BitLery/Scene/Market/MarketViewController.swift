@@ -24,8 +24,7 @@ final class MarketViewController: BaseViewController {
     
     private let disposeBag = DisposeBag()
     private let viewModel = MarketViewModel()
-    
-    private let isTimerRunning = BehaviorRelay(value: false)
+    private let isTimerRunning = BehaviorRelay(value: true)
     
     override func viewIsAppearing(_ animated: Bool) {
         super.viewIsAppearing(animated)

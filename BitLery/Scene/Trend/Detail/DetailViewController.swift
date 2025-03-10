@@ -81,7 +81,7 @@ final class DetailViewController: BaseViewController {
             make.horizontalEdges.equalToSuperview().inset(20)
         }
         rateView.snp.makeConstraints { make in
-            make.top.equalTo(currentPriceLabel.snp.bottom).offset(4)
+            make.top.equalTo(currentPriceLabel.snp.bottom)
             make.leading.equalToSuperview().inset(20)
         }
         chartView.snp.makeConstraints { make in
@@ -170,9 +170,27 @@ final class DetailViewController: BaseViewController {
 }
 
 extension DetailViewController {
+    private func setContent() {
+        infoTitleLabel.text = "종목정보"
+        volumeTitleLabel.text = "투자지표"
+    }
+}
+
+extension DetailViewController {
     private func bind() {
-        let input = DetailViewModel.Input()
+        let input = DetailViewModel.Input(infoMoreButtonTapped: infoMoreButton.rx.tap,
+                                          volumeMoreButtonTapped: volumeMoreButton.rx.tap)
         let output = viewModel.transform(input: input)
+        
+        output.showIndicatorTrigger
+            .drive(with: self) { owner, isShow in
+                if isShow {
+                    owner.showIndicator()
+                } else {
+                    owner.hideIndicator()
+                }
+            }
+            .disposed(by: disposeBag)
         
         output.setUITrigger
             .bind(with: self) { owner, coinInfo in
@@ -184,6 +202,19 @@ extension DetailViewController {
             .drive(with: self) { owner, coin in
                 guard let coin else { return }
                 owner.setContent(coin)
+            }
+            .disposed(by: disposeBag)
+        
+        output.dialogTrigger
+            .drive(with: self) { owner, content in
+                guard let content else { return }
+                owner.showDialog(message: content.message, buttonTitle: content.buttonTitle)
+            }
+            .disposed(by: disposeBag)
+        
+        output.toastTrigger
+            .bind(with: self) { owner, message in
+                owner.view.makeToast(message, duration: 2, style: owner.toastStyle)
             }
             .disposed(by: disposeBag)
     }

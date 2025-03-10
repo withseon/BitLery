@@ -50,8 +50,8 @@ final class MarketViewModel: BaseViewModel {
         
         // MARK: 데이터 페치
         Driver<Int>.interval(.seconds(5))
-            .debug("Timer")
             .asObservable()
+            .startWith(-1)
             .withLatestFrom(input.isTimerRunning)
             .bind(with: self) { owner, isRunning in
                 if isRunning {
@@ -59,7 +59,7 @@ final class MarketViewModel: BaseViewModel {
                 }
             }
             .disposed(by: disposeBag)
-        
+
         input.tradePriceButtonTapped
             .map {
                 switch sortType.value {

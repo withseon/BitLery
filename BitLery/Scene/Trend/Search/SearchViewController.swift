@@ -70,6 +70,16 @@ extension SearchViewController {
             }
             .disposed(by: disposeBag)
         
+        output.showIndicatorTrigger
+            .drive(with: self) { owner, isShow in
+                if isShow {
+                    owner.showIndicator()
+                } else {
+                    owner.hideIndicator()
+                }
+            }
+            .disposed(by: disposeBag)
+        
         output.popTrigger
             .bind(with: self) { owner, _ in
                 owner.navigationController?.popViewController(animated: true)
@@ -79,6 +89,12 @@ extension SearchViewController {
         output.searchCoinData
             .drive(TabVC.coinSearchViewController.collectionView.rx.items(cellIdentifier: SearchCoinCollectionViewCell.identifier, cellType: SearchCoinCollectionViewCell.self)) { _, element, cell in
                 cell.setContent(element)
+            }
+            .disposed(by: disposeBag)
+        
+        output.collectionHiddenTrigger
+            .drive(with: self) { owner, isHidden in
+                owner.TabVC.coinSearchViewController.hideCollectionView(isHidden)
             }
             .disposed(by: disposeBag)
         

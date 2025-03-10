@@ -13,6 +13,7 @@ final class DetailViewModel: BaseViewModel {
     private let coinInfo: BehaviorRelay<CoinBasicInfo>
     var disposeBag = DisposeBag()
     
+    private let showIndicatorTrigger = BehaviorRelay(value: true)
     private let marketData = PublishRelay<CoinMarket?>()
     private let dialogTrigger = PublishRelay<(message: String, buttonTitle: String)?>()
     
@@ -25,6 +26,7 @@ final class DetailViewModel: BaseViewModel {
         let volumeMoreButtonTapped: ControlEvent<Void>
     }
     struct Output {
+        let showIndicatorTrigger: Driver<Bool>
         let setUITrigger: Observable<CoinBasicInfo>
         let marketData: Driver<CoinMarket?>
         let dialogTrigger: Driver<(message: String, buttonTitle: String)?>
@@ -37,6 +39,9 @@ final class DetailViewModel: BaseViewModel {
         coinInfo
             .map { $0.id }
             .bind(with: self) { owner, id in
+                if !owner.showIndicatorTrigger.value {
+                    owner.showIndicatorTrigger.accept(true)
+                }
                 owner.fetchMarketData(id)
             }
             .dispose()
@@ -53,7 +58,8 @@ final class DetailViewModel: BaseViewModel {
             }
             .disposed(by: disposeBag)
         
-        return Output(setUITrigger: Observable.just(coinInfo.value),
+        return Output(showIndicatorTrigger: showIndicatorTrigger.asDriver(),
+                      setUITrigger: Observable.just(coinInfo.value),
                       marketData: marketData.asDriver(onErrorJustReturn: nil),
                       dialogTrigger: dialogTrigger.asDriver(onErrorJustReturn: nil),
                       toastTrigger: toastTrigger)
@@ -78,6 +84,7 @@ extension DetailViewModel {
             case .failure(let error):
                 owner.dialogTrigger.accept((error.message, "확인"))
             }
+            owner.showIndicatorTrigger.accept(false)
         }
         .disposed(by: disposeBag)
     }

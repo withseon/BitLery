@@ -12,6 +12,7 @@ import RxSwift
 final class TrendViewModel: BaseViewModel {
     var disposeBag = DisposeBag()
     
+    private let showIndicatorTrigger = BehaviorRelay(value: true)
     private let updateTimeText = BehaviorRelay(value: "")
     private let TrendCoinData = BehaviorRelay(value: [TrendCoin]())
     private let trendNFTData = BehaviorRelay(value: [TrendNFT]())
@@ -24,6 +25,7 @@ final class TrendViewModel: BaseViewModel {
         let selectedCoin: ControlEvent<TrendCoin>
     }
     struct Output {
+        let showIndicatorTrigger: Driver<Bool>
         let updateTimeText: Driver<String>
         let TrendCoinData: Driver<[TrendCoin]>
         let trendNFTData: Driver<[TrendNFT]>
@@ -40,11 +42,14 @@ final class TrendViewModel: BaseViewModel {
         
         // MARK: 데이터 페치
         Driver<Int>.interval(.seconds(600))
-            .debug("Timer")
             .asObservable()
+            .startWith(-1)
             .withLatestFrom(input.isTimerRunning)
             .bind(with: self) { owner, isRunning in
                 if isRunning {
+                    if !owner.showIndicatorTrigger.value {
+                        owner.showIndicatorTrigger.accept(true)
+                    }
                     owner.fetchTrendData()
                 }
             }
@@ -72,7 +77,8 @@ final class TrendViewModel: BaseViewModel {
             .disposed(by: disposeBag)
         
         
-        return Output(updateTimeText: updateTimeText.asDriver(),
+        return Output(showIndicatorTrigger: showIndicatorTrigger.asDriver(),
+                      updateTimeText: updateTimeText.asDriver(),
                       TrendCoinData: TrendCoinData.asDriver(),
                       trendNFTData: trendNFTData.asDriver(),
                       dialogTrigger: dialogTrigger.asDriver(onErrorJustReturn: nil),
@@ -99,6 +105,7 @@ extension TrendViewModel {
             case .failure(let error):
                 owner.dialogTrigger.accept((error.message, "확인"))
             }
+            owner.showIndicatorTrigger.accept(false)
         }
         .disposed(by: disposeBag)
     }

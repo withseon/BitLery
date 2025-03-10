@@ -6,12 +6,15 @@
 //
 
 import UIKit
+import Toast
 
 class BaseViewController: UIViewController {
     let navigationBar = CustomNavigationBar()
+    var toastStyle = ToastStyle()
     
     init() {
         super.init(nibName: nil, bundle: nil)
+        toastStyle.backgroundColor = .labelSecondary
     }
     
     override func viewDidLoad() {
@@ -65,5 +68,37 @@ extension BaseViewController {
         let vc = DialogViewController(message: message, buttonTitle: buttonTitle)
         vc.modalPresentationStyle = .overFullScreen
         present(vc, animated: true)
+    }
+
+    func showIndicator() {
+        DispatchQueue.main.async {
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = windowScene.windows.first(where: { $0.isKeyWindow })
+            else { return }
+
+            let loadingIndicatorView: UIActivityIndicatorView
+            if let existedView = window.subviews.first(where: { $0 is UIActivityIndicatorView } ) as? UIActivityIndicatorView {
+                loadingIndicatorView = existedView
+            } else {
+                loadingIndicatorView = UIActivityIndicatorView(style: .large)
+                loadingIndicatorView.frame = window.frame
+                loadingIndicatorView.backgroundColor = .systemBackground.withAlphaComponent(0.2)
+                loadingIndicatorView.color = .blue
+                window.addSubview(loadingIndicatorView)
+            }
+
+            loadingIndicatorView.startAnimating()
+        }
+
+    }
+    
+    func hideIndicator() {
+        DispatchQueue.main.async {
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = windowScene.windows.first(where: { $0.isKeyWindow })
+            else { return }
+            window.subviews.filter({ $0 is UIActivityIndicatorView }).forEach { $0.removeFromSuperview() }
+        }
+
     }
 }
