@@ -9,13 +9,13 @@ import UIKit
 import SnapKit
 
 final class CustomNavigationBar: BaseView {
-    private let largeTitleLabel = UILabel()
-    private let titleView = UIView()
-    private let titleLabel = UILabel()
-    private let logoImageView = UIImageView()
-    private let leftButton = UIButton()
+    let largeTitleLabel = UILabel()
+    let titleView = UIView()
+    let titleLabel = UILabel()
+    let logoImageView = UIImageView()
+    let leftButton = UIButton()
     let rightButton = UIButton()
-    private let textField = UITextField()
+    let textField = UITextField()
     private let line = UIView()
     
     init() {
@@ -46,10 +46,10 @@ final class CustomNavigationBar: BaseView {
         }
         logoImageView.snp.makeConstraints { make in
             make.leading.verticalEdges.equalToSuperview()
-            make.size.equalTo(28)
+            make.size.equalTo(24)
         }
         titleLabel.snp.makeConstraints { make in
-            make.leading.equalTo(logoImageView.snp.trailing).offset(8)
+            make.leading.equalTo(logoImageView.snp.trailing).offset(4)
             make.trailing.centerY.equalToSuperview()
         }
         leftButton.snp.makeConstraints { make in
@@ -77,17 +77,16 @@ final class CustomNavigationBar: BaseView {
         backgroundColor = .systemBackground
         
         largeTitleLabel.textAlignment = .left
-        largeTitleLabel.font = Resource.SystemFont.navigationLargeTitle
+        largeTitleLabel.font = Resource.SystemFont.heavy18
         largeTitleLabel.textColor = .labelMain
         
-        logoImageView.backgroundColor = .labelSecondary
         logoImageView.clipsToBounds = true
-        logoImageView.layer.cornerRadius = 14
+        logoImageView.layer.cornerRadius = 12
         
-        titleLabel.font = Resource.SystemFont.navigationTitle
+        titleLabel.font = Resource.SystemFont.bold16
         titleLabel.textColor = .labelMain
         
-        let config = UIImage.SymbolConfiguration(font: Resource.SystemFont.navigationButton)
+        let config = UIImage.SymbolConfiguration(font: .boldSystemFont(ofSize: 20))
         leftButton.setImage(UIImage(systemName: "arrow.left", withConfiguration: config), for: .normal)
         leftButton.tintColor = .labelMain
         
@@ -96,29 +95,10 @@ final class CustomNavigationBar: BaseView {
         rightButton.tintColor = .labelMain
         
         textField.borderStyle = .none
+        textField.font = Resource.SystemFont.regular14
         textField.tintColor = .labelMain
         textField.textColor = .labelMain
         
         line.backgroundColor = .backgroundSecondary
-    }
-}
-
-extension CustomNavigationBar {
-    func setLargeTitle(_ text: String) {
-        largeTitleLabel.isHidden = false
-        largeTitleLabel.text = text
-    }
-    
-    func setTextField() {
-        leftButton.isHidden = false
-        textField.isHidden = false
-    }
-    
-    func setTitle(text: String, image: String) {
-        leftButton.isHidden = false
-        rightButton.isHidden = false
-        titleView.isHidden = false
-        titleLabel.text = text
-        logoImageView.setKFImage(strURL: image)
     }
 }
