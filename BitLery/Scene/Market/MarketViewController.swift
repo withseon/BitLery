@@ -25,17 +25,16 @@ final class MarketViewController: BaseViewController {
     private let disposeBag = DisposeBag()
     private let viewModel = MarketViewModel()
     
-    private let viewAppearTrigger = PublishRelay<Void>()
-    private let viewDisappearTrigger = PublishRelay<Void>()
+    private let isTimerRunning = BehaviorRelay(value: false)
     
     override func viewIsAppearing(_ animated: Bool) {
         super.viewIsAppearing(animated)
-        viewAppearTrigger.accept(())
+        isTimerRunning.accept(true)
     }
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        viewDisappearTrigger.accept(())
+        isTimerRunning.accept(false)
     }
     
     override func viewDidLoad() {
@@ -124,8 +123,7 @@ extension MarketViewController {
 // MARK: - bind 메서드
 extension MarketViewController {
     private func bind() {
-        let input = MarketViewModel.Input(viewAppearTrigger: viewAppearTrigger,
-                                          viewDisappearTrigger: viewDisappearTrigger,
+        let input = MarketViewModel.Input(isTimerRunning: isTimerRunning,
                                           tradePriceButtonTapped: tradePriceSortButton.rx.tap,
                                           rateButtonTapped: changedRateSortButton.rx.tap,
                                           accPriceButtonTapped: accPriceSortButton.rx.tap)

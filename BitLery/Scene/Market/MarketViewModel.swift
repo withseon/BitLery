@@ -25,8 +25,7 @@ final class MarketViewModel: BaseViewModel {
     private let dialogTrigger = PublishRelay<(message: String, buttonTitle: String)?>()
     
     struct Input {
-        let viewAppearTrigger: PublishRelay<Void>
-        let viewDisappearTrigger: PublishRelay<Void>
+        let isTimerRunning: BehaviorRelay<Bool>
         let tradePriceButtonTapped: ControlEvent<Void>
         let rateButtonTapped: ControlEvent<Void>
         let accPriceButtonTapped: ControlEvent<Void>
@@ -48,29 +47,16 @@ final class MarketViewModel: BaseViewModel {
         let changeTradePriceButton = BehaviorRelay(value: 0)
         let changeRateButton = BehaviorRelay(value: 0)
         let changeAccPriceButton = BehaviorRelay(value: 0)
-        let isRunningTimer = BehaviorRelay(value: false)
-        let timer = Observable<Int>.interval(.seconds(60000), scheduler: MainScheduler.instance)
-            .startWith(-1)
         
-        isRunningTimer
-            .flatMapLatest { isRunning in
-                return isRunning ? timer.debug("Timer") : .empty()
-            }
-            .debug("RunningTimer")
-            .subscribe(with: self) { owner, _ in
-                owner.fetchTickerData()
-            }
-            .disposed(by: disposeBag)
-
-        input.viewAppearTrigger
-            .bind(with: self) { owner, _ in
-                isRunningTimer.accept(true)
-            }
-            .disposed(by: disposeBag)
-        
-        input.viewDisappearTrigger
-            .bind(with: self) { owner, _ in
-                isRunningTimer.accept(false)
+        // MARK: 데이터 페치
+        Driver<Int>.interval(.seconds(5))
+            .debug("Timer")
+            .asObservable()
+            .withLatestFrom(input.isTimerRunning)
+            .bind(with: self) { owner, isRunning in
+                if isRunning {
+                    owner.fetchTickerData()
+                }
             }
             .disposed(by: disposeBag)
         

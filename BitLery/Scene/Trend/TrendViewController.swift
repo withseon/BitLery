@@ -23,17 +23,16 @@ final class TrendViewController: BaseViewController {
     private let disposeBag = DisposeBag()
     private let viewModel = TrendViewModel()
     
-    private let viewAppearTrigger = PublishRelay<Void>()
-    private let viewDisappearTrigger = PublishRelay<Void>()
+    private let isTimerRunning = BehaviorRelay(value: false)
     
     override func viewIsAppearing(_ animated: Bool) {
         super.viewIsAppearing(animated)
-        viewAppearTrigger.accept(())
+        isTimerRunning.accept(true)
     }
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        viewDisappearTrigger.accept(())
+        isTimerRunning.accept(false)
     }
     
     override func viewDidLoad() {
@@ -109,9 +108,8 @@ extension TrendViewController {
 // MARK: - bind
 extension TrendViewController {
     private func bind() {
-        let input = TrendViewModel.Input(viewAppearTrigger: viewAppearTrigger,
-                                         viewDisappearTrigger: viewDisappearTrigger,
-                                         returnButtonTapped: searchBar.textField.rx.controlEvent(.editingDidEndOnExit),
+        let input = TrendViewModel.Input(isTimerRunning: isTimerRunning,
+            returnButtonTapped: searchBar.textField.rx.controlEvent(.editingDidEndOnExit),
                                          searchText: searchBar.textField.rx.text,
                                          selectedCoin: coinCollectionView.rx.modelSelected(TrendCoin.self))
         let output = viewModel.transform(input: input)

@@ -18,8 +18,7 @@ final class TrendViewModel: BaseViewModel {
     private let dialogTrigger = PublishRelay<(message: String, buttonTitle: String)?>()
     
     struct Input {
-        let viewAppearTrigger: PublishRelay<Void>
-        let viewDisappearTrigger: PublishRelay<Void>
+        let isTimerRunning: BehaviorRelay<Bool>
         let returnButtonTapped: ControlEvent<Void>
         let searchText: ControlProperty<String?>
         let selectedCoin: ControlEvent<TrendCoin>
@@ -38,30 +37,16 @@ final class TrendViewModel: BaseViewModel {
         let pushSearchTrigger = PublishRelay<String>()
         let pushDetailTrigger = PublishRelay<CoinBasicInfo>()
         let searchBarClearTigger = PublishRelay<Void>()
-        let isRunningTimer = BehaviorRelay(value: false)
-        let timer = Observable<Int>.interval(.seconds(600), scheduler: MainScheduler.instance)
-            .startWith(-1)
         
         // MARK: 데이터 페치
-        isRunningTimer
-            .flatMapLatest { isRunning in
-                return isRunning ? timer.debug("Timer") : .empty()
-            }
-            .debug("RunningTimer")
-            .subscribe(with: self) { owner, _ in
-                owner.fetchTrendData()
-            }
-            .disposed(by: disposeBag)
-
-        input.viewAppearTrigger
-            .bind(with: self) { owner, _ in
-                isRunningTimer.accept(true)
-            }
-            .disposed(by: disposeBag)
-        
-        input.viewDisappearTrigger
-            .bind(with: self) { owner, _ in
-                isRunningTimer.accept(false)
+        Driver<Int>.interval(.seconds(600))
+            .debug("Timer")
+            .asObservable()
+            .withLatestFrom(input.isTimerRunning)
+            .bind(with: self) { owner, isRunning in
+                if isRunning {
+                    owner.fetchTrendData()
+                }
             }
             .disposed(by: disposeBag)
         
@@ -100,6 +85,7 @@ final class TrendViewModel: BaseViewModel {
 // MARK: - 네트워크 통신
 extension TrendViewModel {
     private func fetchTrendData() {
+        print("호출됐당")
         NetworkManager.executeFetch(
             router: CoingeckoRouter.trend,
             response: CoingeckoTrendResponse.self
