@@ -15,6 +15,7 @@
 		2C92BC0C2D798DAD00E7A0CC /* RealmSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 2C92BC0B2D798DAD00E7A0CC /* RealmSwift */; };
 		2C92BC0D2D798E3E00E7A0CC /* RealmSwift in Embed Frameworks */ = {isa = PBXBuildFile; productRef = 2C92BC0B2D798DAD00E7A0CC /* RealmSwift */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		2C92BDB72D7AA9C900E7A0CC /* IQKeyboardManagerSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 2C92BDB62D7AA9C900E7A0CC /* IQKeyboardManagerSwift */; };
+		2C92C30A2D7DAF2400E7A0CC /* Tabman in Frameworks */ = {isa = PBXBuildFile; productRef = 2C92C3092D7DAF2400E7A0CC /* Tabman */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -64,6 +65,7 @@
 			files = (
 				2C92BB372D7983FB00E7A0CC /* Kingfisher in Frameworks */,
 				2C92BB342D7983E400E7A0CC /* SnapKit in Frameworks */,
+				2C92C30A2D7DAF2400E7A0CC /* Tabman in Frameworks */,
 				2C92BB292D79837900E7A0CC /* RxSwift in Frameworks */,
 				2C92BC0C2D798DAD00E7A0CC /* RealmSwift in Frameworks */,
 				2C92BB272D79837900E7A0CC /* RxCocoa in Frameworks */,
@@ -118,6 +120,7 @@
 				2C92BB362D7983FB00E7A0CC /* Kingfisher */,
 				2C92BC0B2D798DAD00E7A0CC /* RealmSwift */,
 				2C92BDB62D7AA9C900E7A0CC /* IQKeyboardManagerSwift */,
+				2C92C3092D7DAF2400E7A0CC /* Tabman */,
 			);
 			productName = BitLery;
 			productReference = 2C92B9962D79818D00E7A0CC /* BitLery.app */;
@@ -153,6 +156,7 @@
 				2C92BB352D7983FB00E7A0CC /* XCRemoteSwiftPackageReference "Kingfisher" */,
 				2C92BC0A2D798DAD00E7A0CC /* XCRemoteSwiftPackageReference "realm-swift" */,
 				2C92BDB52D7AA9C900E7A0CC /* XCRemoteSwiftPackageReference "IQKeyboardManager" */,
+				2C92C3082D7DAF2400E7A0CC /* XCRemoteSwiftPackageReference "Tabman" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2C92B9972D79818D00E7A0CC /* Products */;
@@ -199,7 +203,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 16;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -231,7 +235,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 16;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -433,6 +437,14 @@
 				minimumVersion = 8.0.0;
 			};
 		};
+		2C92C3082D7DAF2400E7A0CC /* XCRemoteSwiftPackageReference "Tabman" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/uias/Tabman.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.2.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -465,6 +477,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 2C92BDB52D7AA9C900E7A0CC /* XCRemoteSwiftPackageReference "IQKeyboardManager" */;
 			productName = IQKeyboardManagerSwift;
+		};
+		2C92C3092D7DAF2400E7A0CC /* Tabman */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2C92C3082D7DAF2400E7A0CC /* XCRemoteSwiftPackageReference "Tabman" */;
+			productName = Tabman;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
