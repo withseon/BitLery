@@ -19,24 +19,33 @@ final class FormatManager {
 }
 
 extension FormatManager {
+    func marketName(_ text: String) -> String {
+        let names = text.components(separatedBy: "-")
+        return "\(names[1])/\(names[0])"
+    }
+    
     func changeRate(_ num: Double) -> String {
         return String(format: "%.2f%%", ((num * 100).rounded() / 100))
     }
     
+    func changeAbsRate(_ num: Double) -> String {
+        return String(format: "%.2f%%", abs((num * 100).rounded() / 100))
+    }
+    
     func changePrice(_ num: Double) -> String {
-        let num = (num * 100).rounded() / 100
         if num.truncatingRemainder(dividingBy: 1.0) == 0  {
             return "\(num.formatted())"
         } else {
+            let num = (num * 100).rounded() / 100
             return String(format: "%.2f", num)
         }
     }
     
     func tradePrice(_ num: Double) -> String {
-        let num = (num * 100).rounded() / 100
         if num.truncatingRemainder(dividingBy: 1.0) == 0  {
             return num.formatted()
         } else {
+            let num = (num * 100).rounded() / 100
             return String(num)
         }
     }
@@ -64,9 +73,15 @@ extension FormatManager {
         return dateFormatter.string(from: date)
     }
     
-    func detailUpdateTime(_ text: String) -> String {
+    func marketUpdateTime(_ text: String) -> String {
         guard let date = isoDateFormatter.date(from: text) else { return "" }
         dateFormatter.dateFormat = "M/d hh:mm:ss 업데이트"
+        return dateFormatter.string(from: date)
+    }
+    
+    func priceUpdateTime(_ text: String) -> String {
+        guard let date = isoDateFormatter.date(from: text) else { return "" }
+        dateFormatter.dateFormat = "yy년 M월 d일"
         return dateFormatter.string(from: date)
     }
 }
