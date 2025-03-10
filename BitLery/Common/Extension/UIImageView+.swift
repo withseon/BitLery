@@ -12,8 +12,7 @@ extension UIImageView {
     func setKFImage(strURL: String) {
         if let imageURL = URL(string: strURL) {
             kf.indicatorType = .activity
-            kf.setImage(with: imageURL,
-                        options: [.transition(.fade(1))])
+            kf.setImage(with: imageURL)
         }
     }
 }
