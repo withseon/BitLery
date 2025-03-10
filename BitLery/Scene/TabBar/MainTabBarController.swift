@@ -48,7 +48,7 @@ extension MainTabBarController {
             case .market:
                 return MarketViewController.self
             case .rank:
-                return RankViewController.self
+                return TrendViewController.self
             case .setting:
                 return SettingViewController.self
             }

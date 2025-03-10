@@ -63,7 +63,7 @@ extension SceneDelegate {
         let appearance = UITabBarAppearance()
         appearance.configureWithTransparentBackground()
         appearance.backgroundColor = .systemBackground
-        appearance.shadowColor = .clear
+        appearance.shadowColor = .backgroundSecondary
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance
         UITabBar.appearance().tintColor = .labelMain
