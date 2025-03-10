@@ -27,6 +27,25 @@ struct CoingeckoMarketResponse: Decodable {
     let atlDate: String // 선저점 일자
     let marketCap: Int // 시가 총액
     let fullyDilutedValuation: Int // 완전 희석 가치
-    let totalVolume: Int // 총 거래량
+    let totalVolume: Double // 총 거래량
     let sparklineIn7D: SparklineResponse // 일주일 간 코인 시세 정보
+}
+
+extension CoingeckoMarketResponse {
+    var asCoinMarket: CoinMarket {
+        return CoinMarket(id: id,
+                          currentPrice: FormatManager.shared.krwPrice(currentPrice),
+                          changeRatePrice: priceChangePercentage24H,
+                          lastUpdate: FormatManager.shared.marketUpdateTime(lastUpdated),
+                          lowPrice24H: FormatManager.shared.krwPrice(low24H),
+                          highPrice24H: FormatManager.shared.krwPrice(high24H),
+                          atHighPrice: FormatManager.shared.krwPrice(ath),
+                          atHighDate: FormatManager.shared.priceUpdateTime(athDate),
+                          atLowPrice: FormatManager.shared.krwPrice(atl),
+                          atLowDate: FormatManager.shared.priceUpdateTime(atlDate),
+                          marketCapPrice: marketCap.formatted(.currency(code: "krw")),
+                          fullyDilutedValuation: fullyDilutedValuation.formatted(.currency(code: "krw")),
+                          totalVolume: totalVolume.formatted(.currency(code: "krw")),
+                          sparklinePrices: sparklineIn7D.price)
+    }
 }

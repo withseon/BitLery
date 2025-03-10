@@ -15,3 +15,15 @@ struct UpbitTickerResponse: Decodable {
     let signedChangePrice: Double // 부호가 있는 변화액
     let accTradePrice24H: Double // 24시간 누적 거래대금
 }
+
+extension UpbitTickerResponse {
+    var asTicker: Ticker {
+        return Ticker(
+            market: FormatManager.shared.marketName(market),
+            tradePrice: tradePrice,
+            changedRate: signedChangeRate,
+            changedPrice: signedChangePrice,
+            accTradePrice: accTradePrice24H
+        )
+    }
+}

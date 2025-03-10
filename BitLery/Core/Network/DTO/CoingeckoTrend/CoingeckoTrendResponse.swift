@@ -35,14 +35,33 @@ struct CoingeckoTrendResponse: Decodable {
     struct NFTResponse: Decodable {
         struct DataResponse: Decodable {
             let floorPrice: String // 24시간 중 NFT 최저가
-            let floorPriceInUsd24HPercentageChange: String // 24시간 동안 NFT 변동폭
         }
         
         let name: String // NFT 토큰명
         let thumb: String // NFT 아이콘 리소스
+        let floorPrice24HPercentageChange: Double // 24시간 동안 NFT 변동폭
         let data: DataResponse
     }
     
     let coins: [ItemResponse]
     let nfts: [NFTResponse]
+}
+
+extension CoingeckoTrendResponse.ItemResponse {
+    var asTrendCoins: TrendCoin {
+        return TrendCoin(id: item.id,
+                         name: item.name,
+                         symbol: item.symbol,
+                         thumbImage: item.thumb,
+                         changedRatePrice: item.data.priceChangePercentage24H.krw)
+    }
+}
+
+extension CoingeckoTrendResponse.NFTResponse {
+    var asTrendNFTs: TrendNFT {
+        return TrendNFT(name: name,
+                        thumbImage: thumb,
+                        changedRatePrice: floorPrice24HPercentageChange,
+                        floorPrice: data.floorPrice)
+    }
 }
