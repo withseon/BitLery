@@ -12,11 +12,6 @@ final class RateView: BaseView {
     private let changeImageView = UIImageView()
     private let rateLabel = UILabel()
     
-    init() {
-        changeImageView.isHidden = true
-        super.init(frame: .zero)
-    }
-    
     override func configureHierarchy() {
         addSubview(changeImageView)
         addSubview(rateLabel)
@@ -40,21 +35,13 @@ final class RateView: BaseView {
 }
 
 extension RateView {
-    func setContent(text: String, change: RateChange) {
-        rateLabel.text = text
+    func setContent(_ rate: Double) {
+        rateLabel.text = FormatManager.shared.changeAbsRate(rate)
         rateLabel.font = Resource.SystemFont.bold9
-        rateLabel.textColor = change.color
         
-        changeImageView.tintColor = change.color
-        switch change {
-        case .even:
-            break
-        case .rise:
-            changeImageView.isHidden = false
-            changeImageView.image = UIImage(systemName: "arrowtriangle.up.fill")
-        case .fall:
-            changeImageView.isHidden = false
-            changeImageView.image = UIImage(systemName: "arrowtriangle.down.fill")
-        }
+        let rateResource = Resource.getRateResource(rate)
+        rateLabel.textColor = rateResource.color
+        changeImageView.tintColor = rateResource.color
+        changeImageView.image = rateResource.image
     }
 }
