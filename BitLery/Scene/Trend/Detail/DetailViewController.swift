@@ -36,6 +36,7 @@ final class DetailViewController: BaseViewController {
     
     private let disposeBag = DisposeBag()
     private let viewModel: DetailViewModel
+    var onUpdate: (() -> Void)?
     
     init(_ coinInfo: CoinBasicInfo) {
         viewModel = DetailViewModel(coinInfo)
@@ -90,7 +91,7 @@ final class DetailViewController: BaseViewController {
             make.height.equalTo(200)
         }
         updateLabel.snp.makeConstraints { make in
-            make.top.equalTo(chartView.snp.bottom).offset(4)
+            make.top.equalTo(chartView.snp.bottom)
             make.leading.equalToSuperview().inset(20)
         }
         infoTitleLabel.snp.makeConstraints { make in
@@ -157,6 +158,7 @@ final class DetailViewController: BaseViewController {
     
     override func configureView() {
         currentPriceLabel.font = Resource.SystemFont.heavy18
+        currentPriceLabel.textColor = .labelMain
         updateLabel.font = Resource.SystemFont.regular9
         updateLabel.textColor = .labelSecondary
         updateLabel.textAlignment = .left
@@ -170,16 +172,13 @@ final class DetailViewController: BaseViewController {
 }
 
 extension DetailViewController {
-    private func setContent() {
-        infoTitleLabel.text = "종목정보"
-        volumeTitleLabel.text = "투자지표"
-    }
-}
-
-extension DetailViewController {
     private func bind() {
-        let input = DetailViewModel.Input(infoMoreButtonTapped: infoMoreButton.rx.tap,
-                                          volumeMoreButtonTapped: volumeMoreButton.rx.tap)
+        let networkRetryTrigger = PublishRelay<Void>()
+        let input = DetailViewModel.Input(viewDidLoadTrigger: BehaviorRelay(value: ()),
+                                          likeButtonTapped: navigationBar.rightButton.rx.tap,
+                                          infoMoreButtonTapped: infoMoreButton.rx.tap,
+                                          volumeMoreButtonTapped: volumeMoreButton.rx.tap,
+                                          networkRetryTrigger: networkRetryTrigger)
         let output = viewModel.transform(input: input)
         
         output.showIndicatorTrigger
@@ -198,6 +197,19 @@ extension DetailViewController {
             }
             .disposed(by: disposeBag)
         
+        output.setStarButton
+            .bind(with: self) { owner, isLiked in
+                owner.navigationBar.rightButton.isSelected = isLiked
+                owner.onUpdate?()
+            }
+            .disposed(by: disposeBag)
+        
+        output.updateTrigger
+            .bind(with: self) { owner, _ in
+                owner.onUpdate?()
+            }
+            .disposed(by: disposeBag)
+        
         output.marketData
             .drive(with: self) { owner, coin in
                 guard let coin else { return }
@@ -206,15 +218,32 @@ extension DetailViewController {
             .disposed(by: disposeBag)
         
         output.dialogTrigger
-            .drive(with: self) { owner, content in
-                guard let content else { return }
-                owner.showDialog(message: content.message, buttonTitle: content.buttonTitle)
+            .drive(with: self) { owner, message in
+                guard let message else { return }
+                owner.showDialog(message: message) {
+                    owner.navigationController?.popViewController(animated: true)
+                }
+            }
+            .disposed(by: disposeBag)
+        
+        output.monitorDialogTrigger
+            .drive(with: self) { owner, _ in
+                print("이건 호출되니")
+                owner.showMonitorDialog {
+                    networkRetryTrigger.accept(())
+                }
             }
             .disposed(by: disposeBag)
         
         output.toastTrigger
             .bind(with: self) { owner, message in
-                owner.view.makeToast(message, duration: 2, style: owner.toastStyle)
+                owner.showToast(message)
+            }
+            .disposed(by: disposeBag)
+        
+        output.networkToastTrigger
+            .bind(with: self) { owner, _ in
+                owner.showToastOnPresentView()
             }
             .disposed(by: disposeBag)
     }
@@ -234,23 +263,17 @@ extension DetailViewController {
         totalVolumeInfoView.setContent(price: coin.totalVolume)
         setChart(coin.sparklinePrices)
     }
-    
+}
+
+extension DetailViewController {
     func setChart(_ sparkline: [Double]) {
-        // X축 설정
-        chartView.xAxis.drawGridLinesEnabled = false
-        chartView.xAxis.drawAxisLineEnabled = false
-        chartView.xAxis.drawLabelsEnabled = false
-        
-        // 왼쪽 Y축 설정
-        let leftAxis = chartView.leftAxis
-        leftAxis.drawGridLinesEnabled = false
-        leftAxis.drawAxisLineEnabled = false
-        leftAxis.drawLabelsEnabled = false
-        
-        // 오른쪽 Y축 설정
-        chartView.rightAxis.enabled = false
-        
-        // MARK: UI와 비슷하게 구현하고자 data 중 일부만 차트 데이터로 사용
+        let dataSet = getChartDataSet(sparkline)
+        setChartUI(dataSet)
+        let chartData = LineChartData(dataSet: dataSet)
+        chartView.data = chartData
+    }
+    
+    func getChartDataSet(_ sparkline: [Double]) -> LineChartDataSet {
         var dataEntry = [ChartDataEntry]()
         let dataLastIndex = sparkline.count - 1
         for index in 0...dataLastIndex {
@@ -258,9 +281,25 @@ extension DetailViewController {
                 dataEntry.append(ChartDataEntry(x: Double(index), y: sparkline[index]))
             }
         }
-        let dataSet = LineChartDataSet(entries: dataEntry)
-        let chartData = LineChartData(dataSet: dataSet)
-        chartView.data = chartData
+        return LineChartDataSet(entries: dataEntry)
+    }
+    
+    func setChartUI(_ dataSet: LineChartDataSet) {
+        chartView.xAxis.drawGridLinesEnabled = false
+        chartView.xAxis.drawAxisLineEnabled = false
+        chartView.xAxis.drawLabelsEnabled = false
+        chartView.leftAxis.drawGridLinesEnabled = false
+        chartView.leftAxis.drawAxisLineEnabled = false
+        chartView.leftAxis.drawLabelsEnabled = false
+        chartView.rightAxis.enabled = false
+        chartView.drawGridBackgroundEnabled = false
+        chartView.drawBordersEnabled = false
+        chartView.legend.enabled = false
+        chartView.noDataText = "차트 데이터가 없습니다"
+        chartView.highlightPerDragEnabled = false
+        chartView.highlightPerTapEnabled = false
+
+        
         let gradientColors = [UIColor.labelDown.cgColor,
                               UIColor.labelDown.withAlphaComponent(0.1).cgColor] as CFArray
         let gradient = CGGradient(colorsSpace: nil, colors: gradientColors, locations: [0.5, 0.0])
@@ -274,12 +313,5 @@ extension DetailViewController {
         dataSet.mode = .cubicBezier
         dataSet.cubicIntensity = 0.2
         dataSet.drawValuesEnabled = false
-        
-        chartView.drawGridBackgroundEnabled = false
-        chartView.drawBordersEnabled = false
-        chartView.legend.enabled = false
-        chartView.noDataText = "차트 데이터가 없습니다."
-        chartView.highlightPerDragEnabled = false
-        chartView.highlightPerTapEnabled = false
     }
 }
