@@ -22,7 +22,7 @@ final class MarketSearchViewController: BaseViewController {
     }
     
     override func configureView() {
-        mainLabel.text = "서비스 준비중입니다."
+        mainLabel.text = "서비스 준비중입니다"
         mainLabel.font = Resource.SystemFont.regular12
         mainLabel.textColor = .labelSecondary
     }

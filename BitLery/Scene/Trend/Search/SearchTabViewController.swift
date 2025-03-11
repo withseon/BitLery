@@ -10,7 +10,7 @@ import Tabman
 import Pageboy
 import SnapKit
 
-final class SearchPagingViewController: TabmanViewController {
+final class SearchTabViewController: TabmanViewController {
     let coinSearchViewController = CoinSearchViewController()
     private var viewControllers = [UIViewController]()
     
@@ -27,7 +27,7 @@ final class SearchPagingViewController: TabmanViewController {
     }
 }
 
-extension SearchPagingViewController {
+extension SearchTabViewController {
     private func configureTabBar() {
         let underLineView = UIView()
         let underLine = UIView()
@@ -61,7 +61,7 @@ extension SearchPagingViewController {
     }
 }
 
-extension SearchPagingViewController: PageboyViewControllerDataSource, TMBarDataSource {
+extension SearchTabViewController: PageboyViewControllerDataSource, TMBarDataSource {
     func numberOfViewControllers(in pageboyViewController: Pageboy.PageboyViewController) -> Int {
         return viewControllers.count
     }

@@ -34,7 +34,7 @@ final class CoinSearchViewController: BaseViewController {
     }
     
     override func configureView() {
-        emptyLabel.text = "검색 결과가 없습니다."
+        emptyLabel.text = "검색 결과가 없습니다"
         emptyLabel.font = Resource.SystemFont.regular12
         emptyLabel.textColor = .labelSecondary
     }

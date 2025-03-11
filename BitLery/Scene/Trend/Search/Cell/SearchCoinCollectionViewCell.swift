@@ -18,9 +18,14 @@ final class SearchCoinCollectionViewCell: BaseCollectionViewCell {
     private let rankBackgroundView = UIView()
     private let rankLabel = UILabel()
     private let starImageView = UIImageView()
-    private let starButton = UIButton()
+    let starButton = UIButton()
     
-    let disposeBag = DisposeBag()
+    var disposeBag = DisposeBag()
+    
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        disposeBag = DisposeBag()
+    }
     
     override func configureHierarchy() {
         [thumbnailImageView, nameView, rankBackgroundView, rankLabel, starImageView, starButton].forEach { view in
@@ -88,8 +93,6 @@ final class SearchCoinCollectionViewCell: BaseCollectionViewCell {
         
         starImageView.contentMode = .scaleAspectFill
         starImageView.tintColor = .labelMain
-        let config = UIImage.SymbolConfiguration(font: .boldSystemFont(ofSize: 16))
-        starImageView.image = UIImage(systemName: "star", withConfiguration: config)
     }
 }
 
@@ -101,5 +104,15 @@ extension SearchCoinCollectionViewCell {
         rankLabel.text = "#\(searchCoin.rank)"
         rankBackgroundView.isHidden = searchCoin.rank < 1
         rankLabel.isHidden = searchCoin.rank < 1
+        changeStarImage(searchCoin.isLiked)
+    }
+    
+    func changeStarImage(_ isLiked: Bool) {
+        let config = UIImage.SymbolConfiguration(font: .boldSystemFont(ofSize: 16))
+        if isLiked {
+            starImageView.image = UIImage(systemName: "star.fill", withConfiguration: config)
+        } else {
+            starImageView.image = UIImage(systemName: "star", withConfiguration: config)
+        }
     }
 }

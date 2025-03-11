@@ -14,11 +14,13 @@ struct SearchCoin {
     let rank: Int
     let thumbnailImage: String
     let largeImage: String
+    var isLiked: Bool = false
 }
 
 extension SearchCoin {
     var asCoinBasicInfo: CoinBasicInfo {
         return CoinBasicInfo(id: id,
+                             name: name,
                              symbol: symbol,
                              thumbImage: thumbnailImage)
     }

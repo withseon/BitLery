@@ -18,6 +18,7 @@ struct TrendCoin {
 extension TrendCoin {
     var asCoinBasicInfo: CoinBasicInfo {
         return CoinBasicInfo(id: id,
+                             name: name,
                              symbol: symbol,
                              thumbImage: thumbImage)
     }

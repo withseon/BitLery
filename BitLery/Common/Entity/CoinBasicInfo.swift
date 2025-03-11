@@ -9,6 +9,7 @@ import Foundation
 
 struct CoinBasicInfo {
     let id: String
+    let name: String
     let symbol: String
     let thumbImage: String
 }

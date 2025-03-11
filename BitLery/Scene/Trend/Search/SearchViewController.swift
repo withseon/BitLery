@@ -12,7 +12,7 @@ import SnapKit
 
 final class SearchViewController: BaseViewController {
     private let bodyView = UIView()
-    private var TabVC = SearchPagingViewController()
+    private var searchTabVC = SearchTabViewController()
     
     private let disposeBag = DisposeBag()
     private let viewModel: SearchViewModel
@@ -47,20 +47,24 @@ final class SearchViewController: BaseViewController {
 
 extension SearchViewController {
     private func configureTabView() {
-        addChild(TabVC)
-        bodyView.addSubview(TabVC.view)
-        TabVC.view.frame = bodyView.bounds
-        TabVC.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        TabVC.didMove(toParent: self)
+        addChild(searchTabVC)
+        bodyView.addSubview(searchTabVC.view)
+        searchTabVC.view.frame = bodyView.bounds
+        searchTabVC.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        searchTabVC.didMove(toParent: self)
     }
 }
 
 extension SearchViewController {
     private func bind() {
-        let input = SearchViewModel.Input(leftButtonTapped: navigationBar.leftButton.rx.tap,
+        let likedCoinID = PublishRelay<String>()
+        let reloadDataTrigger = PublishRelay<Void>()
+        let networkRetryTrigger = PublishRelay<Void>()
+        let input = SearchViewModel.Input(likedCoinID: likedCoinID,
+                                          reloadDataTrigger: reloadDataTrigger,
                                           returnButtonTapped: navigationBar.textField.rx.controlEvent(.editingDidEndOnExit),
                                           searchText: navigationBar.textField.rx.text,
-                                          selectedCoin: TabVC.coinSearchViewController.collectionView.rx.modelSelected(SearchCoin.self))
+                                          selectedCoin: searchTabVC.coinSearchViewController.collectionView.rx.modelSelected(SearchCoin.self), networkRetryTrigger: networkRetryTrigger)
         let output = viewModel.transform(input: input)
         
         output.setUITrigger
@@ -80,35 +84,59 @@ extension SearchViewController {
             }
             .disposed(by: disposeBag)
         
-        output.popTrigger
-            .bind(with: self) { owner, _ in
-                owner.navigationController?.popViewController(animated: true)
-            }
-            .disposed(by: disposeBag)
-        
         output.searchCoinData
-            .drive(TabVC.coinSearchViewController.collectionView.rx.items(cellIdentifier: SearchCoinCollectionViewCell.identifier, cellType: SearchCoinCollectionViewCell.self)) { _, element, cell in
+            .drive(searchTabVC.coinSearchViewController.collectionView.rx.items(cellIdentifier: SearchCoinCollectionViewCell.identifier, cellType: SearchCoinCollectionViewCell.self)) { _, element, cell in
                 cell.setContent(element)
+                cell.starButton.rx.tap
+                    .bind() { _ in
+                        likedCoinID.accept(element.id)
+                    }
+                    .disposed(by: cell.disposeBag)
             }
             .disposed(by: disposeBag)
         
         output.collectionHiddenTrigger
             .drive(with: self) { owner, isHidden in
-                owner.TabVC.coinSearchViewController.hideCollectionView(isHidden)
+                owner.searchTabVC.coinSearchViewController.hideCollectionView(isHidden)
             }
             .disposed(by: disposeBag)
         
         output.pushDetailTrigger
             .bind(with: self) { owner, coinInfo in
                 let vc = DetailViewController(coinInfo)
+                vc.onUpdate = {
+                    reloadDataTrigger.accept(())
+                }
                 owner.navigationController?.pushViewController(vc, animated: true)
             }
             .disposed(by: disposeBag)
         
         output.dialogTrigger
-            .drive(with: self) { owner, content in
-                guard let content else { return }
-                owner.showDialog(message: content.message, buttonTitle: content.buttonTitle)
+            .drive(with: self) { owner, message in
+                guard let message else { return }
+                owner.showDialog(message: message) {
+                    owner.navigationController?.popViewController(animated: true)
+                }
+            }
+            .disposed(by: disposeBag)
+        
+        output.monitorDialogTrigger
+            .drive(with: self) { owner, _ in
+                owner.showMonitorDialog {
+                    networkRetryTrigger.accept(())
+                }
+            }
+            .disposed(by: disposeBag)
+        
+        output.toastTrigger
+            .bind(with: self) { owner, message in
+                owner.showToast(message)
+            }
+            .disposed(by: disposeBag)
+        
+        output.networkToastTrigger
+            .bind(with: self) { owner, _ in
+                owner.showToastOnPresentView()
             }
             .disposed(by: disposeBag)
     }
