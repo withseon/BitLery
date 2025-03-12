@@ -11,6 +11,7 @@ import RxSwift
 
 final class DialogViewModel: BaseViewModel {
     var disposeBag = DisposeBag()
+    private let monitor = NetworkMonitorService.shared
     
     deinit {
         print("✨Dialog VM deinit")
@@ -21,18 +22,25 @@ final class DialogViewModel: BaseViewModel {
     }
     struct Output {
         let dismissTrigger: PublishRelay<Void>
+        let actionTrigger: PublishRelay<Void>
     }
     
     func transform(input: Input) -> Output {
         let dismissTrigger = PublishRelay<Void>()
+        let actionTrigger = PublishRelay<Void>()
         
         input.confirmButtonTapped
-            .bind { _ in
-                dismissTrigger.accept(())
+            .bind(with: self) { owner, _ in
+                if owner.monitor.isConnected {
+                    dismissTrigger.accept(())
+                } else {
+                    actionTrigger.accept(())
+                }
             }
             .disposed(by: disposeBag)
         
-        return Output(dismissTrigger: dismissTrigger)
+        return Output(dismissTrigger: dismissTrigger,
+                      actionTrigger: actionTrigger)
     }
 
 }

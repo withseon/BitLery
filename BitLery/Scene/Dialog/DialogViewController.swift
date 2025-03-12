@@ -21,6 +21,7 @@ final class DialogViewController: BaseViewController {
     
     private let disposeBag = DisposeBag()
     private let viewModel: DialogViewModel
+    var confirmHandler: (() -> Void)?
     
     init(message: String, buttonTitle: String) {
         messageLabel.text = message
@@ -108,6 +109,13 @@ extension DialogViewController {
         output.dismissTrigger
             .bind(with: self) { owner, _ in
                 owner.dismiss(animated: true)
+                owner.confirmHandler?()
+            }
+            .disposed(by: disposeBag)
+        
+        output.actionTrigger
+            .bind(with: self) { owner, _ in
+                owner.confirmHandler?()
             }
             .disposed(by: disposeBag)
     }
