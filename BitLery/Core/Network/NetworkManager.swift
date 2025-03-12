@@ -14,9 +14,17 @@ enum NetworkManager {
         return Single.create { value in
             URLSession.shared.dataTask(with: router.request) { data, response, error in
                 if let error {
-                    let networkError = NetworkError.transport(error)
-                    value(.success(.failure(networkError)))
-                    print(networkError.debugMessage)
+                    let nsError = error as NSError
+                    dump(nsError)
+                    switch nsError.code {
+                    case NSURLErrorNetworkConnectionLost, NSURLErrorNotConnectedToInternet, NSURLErrorDataNotAllowed,
+                        NSURLErrorCannotConnectToHost, NSURLErrorCannotFindHost:
+                        value(.success(.failure(.lostNetwork(error))))
+                        print(NetworkError.lostNetwork(error).debugMessage)
+                    default:
+                        value(.success(.failure(.transport(error))))
+                        print(NetworkError.transport(error).debugMessage)
+                    }
                 }
                 
                 if let response = response as? HTTPURLResponse,
