@@ -15,7 +15,7 @@ final class MarketCollectionViewCell: BaseCollectionViewCell {
     private let changedPriceLabel = UILabel()
     private let accPriceLabel = UILabel()
     
-    private let formatManager = FormatManager.shared
+    private let formatManager = FormatHelper.shared
     
     override func prepareForReuse() {
         super.prepareForReuse()

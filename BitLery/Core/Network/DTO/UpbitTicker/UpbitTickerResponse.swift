@@ -19,7 +19,7 @@ struct UpbitTickerResponse: Decodable {
 extension UpbitTickerResponse {
     var asTicker: Ticker {
         return Ticker(
-            market: FormatManager.shared.marketName(market),
+            market: FormatHelper.shared.marketName(market),
             tradePrice: tradePrice,
             changedRate: signedChangeRate,
             changedPrice: signedChangePrice,

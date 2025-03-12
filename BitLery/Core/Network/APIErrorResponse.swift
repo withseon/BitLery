@@ -38,7 +38,7 @@ struct APIErrorResponse: Decodable, Error {
         }
         
         // coingecko
-        // { "error": "coin not found" }
+        // { "error": }
         if let errorMessage = try? container.decode(String.self, forKey: .error) {
             self.errorCode = nil
             self.errorMessage = errorMessage

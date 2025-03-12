@@ -7,18 +7,20 @@
 
 import Foundation
 
-final class FormatManager {
-    static let shared = FormatManager()
-    private let isoDateFormatter = ISO8601DateFormatter()
-    private let dateFormatter = DateFormatter()
+final class FormatHelper {
+    static let shared = FormatHelper()
+    private let isoDateFormatter: ISO8601DateFormatter
+    private let dateFormatter: DateFormatter
     
     private init() {
+        isoDateFormatter = ISO8601DateFormatter()
         isoDateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        dateFormatter = DateFormatter()
         dateFormatter.timeZone = TimeZone(abbreviation: "KST")
     }
 }
 
-extension FormatManager {
+extension FormatHelper {
     func marketName(_ text: String) -> String {
         let names = text.components(separatedBy: "-")
         return "\(names[1])/\(names[0])"
@@ -60,10 +62,10 @@ extension FormatManager {
     }
     
     func krwPrice(_ num: Double) -> String {
-        let num = (num * 100).rounded() / 100
         if num.truncatingRemainder(dividingBy: 1.0) == 0  {
             return "\(num.formatted(.currency(code: "krw")))"
         } else {
+            let num = (num * 100).rounded() / 100
             return String(format: "₩%.2f", num)
         }
     }

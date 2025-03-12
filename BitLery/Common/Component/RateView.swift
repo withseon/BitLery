@@ -36,7 +36,7 @@ final class RateView: BaseView {
 
 extension RateView {
     func setContent(_ rate: Double) {
-        rateLabel.text = FormatManager.shared.changeAbsRate(rate)
+        rateLabel.text = FormatHelper.shared.changeAbsRate(rate)
         rateLabel.font = Resource.SystemFont.bold9
         
         let rateResource = Resource.getRateResource(rate)
