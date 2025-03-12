@@ -28,7 +28,7 @@ final class DetailViewModel: BaseViewModel {
     }
     
     struct Input {
-        let viewDidLoadTrigger: BehaviorRelay<Void>
+        let viewDidLoadTrigger: PublishRelay<Void>
         let likeButtonTapped: ControlEvent<Void>
         let infoMoreButtonTapped: ControlEvent<Void>
         let volumeMoreButtonTapped: ControlEvent<Void>
@@ -63,7 +63,7 @@ final class DetailViewModel: BaseViewModel {
                 if owner.monitor.isConnected {
                     owner.fetchMarketData(owner.coinInfo.id)
                 } else if owner.isDismissDialog {
-                    print("이거 안 나오니..?")
+                    owner.showIndicatorTrigger.accept(false)
                     owner.monitorDialogTrigger.accept(())
                     owner.isDismissDialog = false
                 }
@@ -141,7 +141,6 @@ final class DetailViewModel: BaseViewModel {
 
 extension DetailViewModel {
     private func fetchMarketData(_ id: String) {
-        print("호출됐찌롱")
         NetworkManager.executeFetch(
             router: CoingeckoRouter.market(dto: CoingeckoMarketRequest(ids: id)),
             response: [CoingeckoMarketResponse].self

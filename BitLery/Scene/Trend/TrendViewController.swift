@@ -19,6 +19,7 @@ final class TrendViewController: BaseViewController {
     private let nftTitleLabel = TitleLabel("인기 NFT")
     private let nftCollectionView = UICollectionView(frame: .zero,
                                                      collectionViewLayout: BaseCollectionViewCell.trendNFTCell())
+    private let coverView = UIView()
     
     private let disposeBag = DisposeBag()
     private let viewModel = TrendViewModel()
@@ -48,7 +49,7 @@ final class TrendViewController: BaseViewController {
     override func configureHierarchy() {
         [navigationBar, searchBar,
          searchTitleLabel, updateTimeLabel, coinCollectionView,
-         nftTitleLabel, nftCollectionView].forEach { view in
+         nftTitleLabel, nftCollectionView, coverView].forEach { view in
             self.view.addSubview(view)
         }
     }
@@ -85,12 +86,17 @@ final class TrendViewController: BaseViewController {
             make.horizontalEdges.equalToSuperview()
             make.bottom.greaterThanOrEqualTo(view.safeAreaLayoutGuide).inset(20)
         }
+        coverView.snp.makeConstraints { make in
+            make.top.equalTo(searchBar.snp.bottom)
+            make.horizontalEdges.bottom.equalToSuperview()
+        }
     }
     
     override func configureView() {
         updateTimeLabel.font = Resource.SystemFont.regular12
         updateTimeLabel.textColor = .labelSecondary
         updateTimeLabel.textAlignment = .right
+        coverView.backgroundColor = .systemBackground
     }
 }
 
@@ -107,10 +113,16 @@ extension TrendViewController {
 // MARK: - bind
 extension TrendViewController {
     private func bind() {
-        let input = TrendViewModel.Input(isTimerRunning: isTimerRunning,
+        let viewDidLoadTrigger = PublishRelay<Void>()
+        let networkRetryTrigger = PublishRelay<Void>()
+        let dismissDialogTrigger = PublishRelay<Void>()
+        let input = TrendViewModel.Input(viewDidLoadTrigger: viewDidLoadTrigger,
+                                         isTimerRunning: isTimerRunning,
                                          returnButtonTapped: searchBar.textField.rx.controlEvent(.editingDidEndOnExit),
                                          searchText: searchBar.textField.rx.text,
-                                         selectedCoin: coinCollectionView.rx.modelSelected(TrendCoin.self))
+                                         selectedCoin: coinCollectionView.rx.modelSelected(TrendCoin.self),
+                                         networkRetryTrigger: networkRetryTrigger,
+                                         dismissDialogTrigger: dismissDialogTrigger)
         let output = viewModel.transform(input: input)
         
         output.showIndicatorTrigger
@@ -147,6 +159,12 @@ extension TrendViewController {
             }
             .disposed(by: disposeBag)
         
+        output.TrendCoinData
+            .drive(with: self) { owner, _ in
+                owner.coverView.isHidden = true
+            }
+            .dispose()
+        
         output.pushSearchTrigger
             .bind(with: self) { owner, text in
                 let vc = SearchViewController(text)
@@ -168,10 +186,27 @@ extension TrendViewController {
             .disposed(by: disposeBag)
         
         output.dialogTrigger
-            .drive(with: self) { owner, content in
-                guard let content else { return }
-                owner.showDialog(message: content.message, buttonTitle: content.buttonTitle)
+            .drive(with: self) { owner, message in
+                guard let message else { return }
+                owner.showDialog(message: message)
+                dismissDialogTrigger.accept(())
             }
             .disposed(by: disposeBag)
+        
+        output.monitorDialogTrigger
+            .drive(with: self) { owner, _ in
+                owner.showMonitorDialog {
+                    networkRetryTrigger.accept(())
+                }
+            }
+            .disposed(by: disposeBag)
+        
+        output.toastTrigger
+            .bind(with: self) { owner, _ in
+                owner.showToastOnPresentView()
+            }
+            .disposed(by: disposeBag)
+        
+        viewDidLoadTrigger.accept(())
     }
 }

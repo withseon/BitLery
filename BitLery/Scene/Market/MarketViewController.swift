@@ -122,11 +122,27 @@ extension MarketViewController {
 // MARK: - bind 메서드
 extension MarketViewController {
     private func bind() {
-        let input = MarketViewModel.Input(isTimerRunning: isTimerRunning,
+        let viewDidLoadTrigger = PublishRelay<Void>()
+        let networkRetryTrigger = PublishRelay<Void>()
+        let dismissDialogTrigger = PublishRelay<Void>()
+        let input = MarketViewModel.Input(viewDidLoadTrigger: viewDidLoadTrigger,
+                                          isTimerRunning: isTimerRunning,
                                           tradePriceButtonTapped: tradePriceSortButton.rx.tap,
                                           rateButtonTapped: changedRateSortButton.rx.tap,
-                                          accPriceButtonTapped: accPriceSortButton.rx.tap)
+                                          accPriceButtonTapped: accPriceSortButton.rx.tap,
+                                          networkRetryTrigger: networkRetryTrigger,
+                                          dismissDialogTrigger: dismissDialogTrigger)
         let output = viewModel.transform(input: input)
+        
+        output.showIndicatorTrigger
+            .drive(with: self) { owner, isShow in
+                if isShow {
+                    owner.showIndicator()
+                } else {
+                    owner.hideIndicator()
+                }
+            }
+            .disposed(by: disposeBag)
         
         output.tickerData
             .drive(
@@ -178,10 +194,27 @@ extension MarketViewController {
             .disposed(by: disposeBag)
         
         output.dialogTrigger
-            .drive(with: self) { owner, content in
-                guard let content else { return }
-                owner.showDialog(message: content.message, buttonTitle: content.buttonTitle)
+            .drive(with: self) { owner, message in
+                guard let message else { return }
+                owner.showDialog(message: message)
+                dismissDialogTrigger.accept(())
             }
             .disposed(by: disposeBag)
+        
+        output.monitorDialogTrigger
+            .drive(with: self) { owner, _ in
+                owner.showMonitorDialog {
+                    networkRetryTrigger.accept(())
+                }
+            }
+            .disposed(by: disposeBag)
+        
+        output.toastTrigger
+            .bind(with: self) { owner, _ in
+                owner.showToastOnPresentView()
+            }
+            .disposed(by: disposeBag)
+        
+        viewDidLoadTrigger.accept(())
     }
 }

@@ -173,8 +173,9 @@ final class DetailViewController: BaseViewController {
 
 extension DetailViewController {
     private func bind() {
+        let viewDidLoadTrigger = PublishRelay<Void>()
         let networkRetryTrigger = PublishRelay<Void>()
-        let input = DetailViewModel.Input(viewDidLoadTrigger: BehaviorRelay(value: ()),
+        let input = DetailViewModel.Input(viewDidLoadTrigger: viewDidLoadTrigger,
                                           likeButtonTapped: navigationBar.rightButton.rx.tap,
                                           infoMoreButtonTapped: infoMoreButton.rx.tap,
                                           volumeMoreButtonTapped: volumeMoreButton.rx.tap,
@@ -228,7 +229,6 @@ extension DetailViewController {
         
         output.monitorDialogTrigger
             .drive(with: self) { owner, _ in
-                print("이건 호출되니")
                 owner.showMonitorDialog {
                     networkRetryTrigger.accept(())
                 }
@@ -246,6 +246,8 @@ extension DetailViewController {
                 owner.showToastOnPresentView()
             }
             .disposed(by: disposeBag)
+        
+        viewDidLoadTrigger.accept(())
     }
 }
 

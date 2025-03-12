@@ -117,7 +117,9 @@ final class SearchViewModel: BaseViewModel {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .distinctUntilChanged()
             .bind(with: self) { owner, text in
-                owner.searchText.accept(text)
+                if !text.isEmpty {
+                    owner.searchText.accept(text)
+                }
             }
             .disposed(by: disposeBag)
         

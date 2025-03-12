@@ -19,26 +19,37 @@ final class MarketViewModel: BaseViewModel {
         case accPriceDesc
         case initial
     }
-    
+    private let monitor = NetworkMonitorService.shared
     var disposeBag = DisposeBag()
+    private var isFetched = false
+    private var isRunning = true
+    private let showIndicatorTrigger = BehaviorRelay(value: true)
     private let tickerData = PublishRelay<[Ticker]>()
-    private let dialogTrigger = PublishRelay<(message: String, buttonTitle: String)?>()
+    private let dialogTrigger = PublishRelay<String?>()
+    private let monitorDialogTrigger = PublishRelay<Void?>()
+    private var isDismissDialog = true
+    private let toastTrigger = PublishRelay<Void>()
     
     struct Input {
+        let viewDidLoadTrigger: PublishRelay<Void>
         let isTimerRunning: BehaviorRelay<Bool>
         let tradePriceButtonTapped: ControlEvent<Void>
         let rateButtonTapped: ControlEvent<Void>
         let accPriceButtonTapped: ControlEvent<Void>
+        let networkRetryTrigger: PublishRelay<Void>
+        let dismissDialogTrigger: PublishRelay<Void>
     }
     
     struct Output {
+        let showIndicatorTrigger: Driver<Bool>
         let tickerData: Driver<[Ticker]>
-        // TODO: 버튼 상태 관리
         // 버튼 상태 -1, 0, 1
         let changeTradePriceButton: Driver<Int>
         let changeRateButton: Driver<Int>
         let changeAccPriceButton: Driver<Int>
-        let dialogTrigger: Driver<(message: String, buttonTitle: String)?>
+        let dialogTrigger: Driver<String?>
+        let monitorDialogTrigger: Driver<Void?>
+        let toastTrigger: PublishRelay<Void>
     }
     
     func transform(input: Input) -> Output {
@@ -48,15 +59,29 @@ final class MarketViewModel: BaseViewModel {
         let changeRateButton = BehaviorRelay(value: 0)
         let changeAccPriceButton = BehaviorRelay(value: 0)
         
-        // MARK: 데이터 페치
-        Driver<Int>.interval(.seconds(5))
-            .asObservable()
-            .startWith(-1)
-            .withLatestFrom(input.isTimerRunning)
+        input.viewDidLoadTrigger
+            .bind(with: self) { owner, _ in
+                owner.fetchTickerData(isFirst: true, isRetry: false)
+            }
+            .disposed(by: disposeBag)
+        
+        input.isTimerRunning
             .bind(with: self) { owner, isRunning in
-                if isRunning {
-                    owner.fetchTickerData()
+                owner.isRunning = isRunning
+            }
+            .disposed(by: disposeBag)
+        
+        input.networkRetryTrigger
+            .bind(with: self) { owner, _ in
+                if owner.isFetched {
+                    owner.fetchTickerData(isFirst: true, isRetry: true)
                 }
+            }
+            .disposed(by: disposeBag)
+        
+        input.dismissDialogTrigger
+            .bind(with: self) { owner, _ in
+                owner.isDismissDialog = true
             }
             .disposed(by: disposeBag)
 
@@ -155,28 +180,63 @@ final class MarketViewModel: BaseViewModel {
             }
             .disposed(by: disposeBag)
         
-        return Output(tickerData: sortedTickerData.asDriver(),
+        return Output(showIndicatorTrigger: showIndicatorTrigger.asDriver(),
+                      tickerData: sortedTickerData.asDriver(),
                       changeTradePriceButton: changeTradePriceButton.asDriver(),
                       changeRateButton: changeRateButton.asDriver(),
                       changeAccPriceButton: changeAccPriceButton.asDriver(),
-                      dialogTrigger: dialogTrigger.asDriver(onErrorJustReturn: nil))
+                      dialogTrigger: dialogTrigger.asDriver(onErrorJustReturn: nil),
+                      monitorDialogTrigger: monitorDialogTrigger.asDriver(onErrorJustReturn: nil),
+                      toastTrigger: toastTrigger)
     }
 }
 
-// MARK: - 네트워크 통신
 extension MarketViewModel {
-    private func fetchTickerData() {
+    private func fetchTickerData(isFirst: Bool, isRetry: Bool) {
+        guard monitor.isConnected else {
+            if isDismissDialog {
+                monitorDialogTrigger.accept(())
+                isDismissDialog = false
+            } else if isRetry {
+                toastTrigger.accept(())
+            }
+            return
+        }
+        
         NetworkManager.executeFetch(
             router: UpbitRouter.ticker(dto: UpbitTickerRequest()),
             response: [UpbitTickerResponse].self
         )
         .bind(with: self) { owner, result in
+            if isFirst {
+                Driver<Int>.interval(.seconds(5))
+                    .asObservable()
+                    .startWith(-1)
+                    .withLatestFrom(Observable.just(owner.isRunning))
+                    .bind(with: owner) { owner, isRunning in
+                        if isRunning {
+                            owner.fetchTickerData(isFirst: false, isRetry: false)
+                        }
+                    }
+                    .disposed(by: owner.disposeBag)
+            }
             switch result {
             case .success(let response):
                 owner.tickerData.accept(response.map { $0.asTicker })
             case .failure(let error):
-                owner.dialogTrigger.accept((error.message, "확인"))
+                if owner.isDismissDialog {
+                    switch error {
+                    case .lostNetwork:
+                        owner.monitorDialogTrigger.accept(())
+                    default:
+                        owner.dialogTrigger.accept(error.message)
+                    }
+                    owner.isDismissDialog = false
+                }
             }
+            owner.showIndicatorTrigger.accept(false)
+            owner.isFetched = true
+            owner.isDismissDialog = true
         }
         .disposed(by: disposeBag)
     }
