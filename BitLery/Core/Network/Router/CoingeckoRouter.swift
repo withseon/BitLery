@@ -32,7 +32,6 @@ extension CoingeckoRouter: RequestType {
     var parameter: [String : Any] {
         switch self {
         case .market(let dto):
-            print(dto.toDictionary)
             return dto.toDictionary
         case .trend:
             return [:]
