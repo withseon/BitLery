@@ -10,11 +10,9 @@ import Toast
 
 class BaseViewController: UIViewController {
     let navigationBar = CustomNavigationBar()
-    var toastStyle = ToastStyle()
     
     init() {
         super.init(nibName: nil, bundle: nil)
-        toastStyle.backgroundColor = .labelSecondary
     }
     
     override func viewDidLoad() {
@@ -49,47 +47,60 @@ extension BaseViewController {
     }
     
     func setNavigationTextField(_ text: String) {
-        navigationBar.leftButton.isHidden = false
+        setLeftButton()
         navigationBar.textField.isHidden = false
         navigationBar.textField.text = text
     }
     
     func setNavigationTitle(text: String, image: String) {
-        navigationBar.leftButton.isHidden = false
+        setLeftButton()
         navigationBar.rightButton.isHidden = false
         navigationBar.titleView.isHidden = false
         navigationBar.titleLabel.text = text
         navigationBar.logoImageView.setKFImage(strURL: image)
     }
+    
+    private func setLeftButton() {
+        navigationBar.leftButton.isHidden = false
+        navigationBar.leftButton.addTarget(self, action: #selector(leftButtonTapped), for: .touchUpInside)
+    }
+    
+    @objc
+    private func leftButtonTapped() {
+        navigationController?.popViewController(animated: true)
+    }
 }
 
 extension BaseViewController {
-    func showDialog(message: String, buttonTitle: String) {
+    func showDialog(message: String, buttonTitle: String = "확인", action: (() -> Void)? = nil) {
         let vc = DialogViewController(message: message, buttonTitle: buttonTitle)
+        vc.confirmHandler = action
         vc.modalPresentationStyle = .overFullScreen
         present(vc, animated: true)
     }
-
+    
+    func showMonitorDialog(action: (() -> Void)?) {
+        let message = "네트워크 연결이 일시적으로 원활하지 않습니다. 데이터 또는 Wi-Fi 연결 상태를 확인해주세요."
+        let buttonTitle = "다시 시도하기"
+        showDialog(message: message, buttonTitle: buttonTitle, action: action)
+    }
+    
     func showIndicator() {
-        DispatchQueue.main.async {
-            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let window = windowScene.windows.first(where: { $0.isKeyWindow })
-            else { return }
-
-            let loadingIndicatorView: UIActivityIndicatorView
-            if let existedView = window.subviews.first(where: { $0 is UIActivityIndicatorView } ) as? UIActivityIndicatorView {
-                loadingIndicatorView = existedView
-            } else {
-                loadingIndicatorView = UIActivityIndicatorView(style: .large)
-                loadingIndicatorView.frame = window.frame
-                loadingIndicatorView.backgroundColor = .systemBackground.withAlphaComponent(0.2)
-                loadingIndicatorView.color = .blue
-                window.addSubview(loadingIndicatorView)
-            }
-
-            loadingIndicatorView.startAnimating()
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first(where: { $0.isKeyWindow }) else { return }
+        
+        let loadingIndicatorView: UIActivityIndicatorView
+        if let existedView = window.subviews.first(where: { $0 is UIActivityIndicatorView } ) as? UIActivityIndicatorView {
+            loadingIndicatorView = existedView
+        } else {
+            loadingIndicatorView = UIActivityIndicatorView(style: .large)
+            loadingIndicatorView.frame = window.frame
+            loadingIndicatorView.backgroundColor = .systemBackground.withAlphaComponent(0.2)
+            loadingIndicatorView.color = .labelSecondary
+            window.addSubview(loadingIndicatorView)
         }
-
+        
+        loadingIndicatorView.startAnimating()
     }
     
     func hideIndicator() {
@@ -100,5 +111,19 @@ extension BaseViewController {
             window.subviews.filter({ $0 is UIActivityIndicatorView }).forEach { $0.removeFromSuperview() }
         }
 
+    }
+    
+    func showToast(_ text: String) {
+        var toastStyle = ToastStyle()
+        toastStyle.backgroundColor = .labelMain
+        view.makeToast(text, duration: 2, style: toastStyle)
+    }
+    
+    func showToastOnPresentView() {
+        guard let presentedViewController = self.presentedViewController else { return }
+        let message = "네트워크 통신이 원활하지 않습니다"
+        var toastStyle = ToastStyle()
+        toastStyle.backgroundColor = .labelMain
+        presentedViewController.view.makeToast(message, duration: 2, style: toastStyle)
     }
 }
