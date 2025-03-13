@@ -12,19 +12,16 @@ import RxCocoa
 enum NetworkManager {
     static func executeFetch<R: RequestType, T: Decodable>(router: R, response: T.Type) -> Observable<Result<T, NetworkError>> {
         return Single.create { value in
+            guard NetworkMonitorService.shared.isConnected else {
+                let networkError = NetworkError.lostNetwork
+                value(.success(.failure(networkError)))
+                print(networkError.debugMessage)
+                return Disposables.create()
+            }
             URLSession.shared.dataTask(with: router.request) { data, response, error in
                 if let error {
-                    let nsError = error as NSError
-                    dump(nsError)
-                    switch nsError.code {
-                    case NSURLErrorNetworkConnectionLost, NSURLErrorNotConnectedToInternet, NSURLErrorDataNotAllowed,
-                        NSURLErrorCannotConnectToHost, NSURLErrorCannotFindHost:
-                        value(.success(.failure(.lostNetwork(error))))
-                        print(NetworkError.lostNetwork(error).debugMessage)
-                    default:
-                        value(.success(.failure(.transport(error))))
-                        print(NetworkError.transport(error).debugMessage)
-                    }
+                    value(.success(.failure(.transport(error))))
+                    print(NetworkError.transport(error).debugMessage)
                 }
                 
                 if let response = response as? HTTPURLResponse,
