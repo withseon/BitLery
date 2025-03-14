@@ -72,17 +72,18 @@ extension BaseViewController {
 }
 
 extension BaseViewController {
-    func showDialog(message: String, buttonTitle: String = "확인", action: (() -> Void)? = nil) {
+    func showDialog(message: String, buttonTitle: String = "확인", dismissAction: (() -> Void)?, conformAction: (() -> Void)? = nil) {
         let vc = DialogViewController(message: message, buttonTitle: buttonTitle)
-        vc.confirmHandler = action
+        vc.confirmHandler = conformAction
+        vc.dismissHandler = dismissAction
         vc.modalPresentationStyle = .overFullScreen
         present(vc, animated: true)
     }
     
-    func showMonitorDialog(action: (() -> Void)?) {
+    func showMonitorDialog(dismissAction: (() -> Void)? = nil, conformAction: (() -> Void)? = nil) {
         let message = "네트워크 연결이 일시적으로 원활하지 않습니다. 데이터 또는 Wi-Fi 연결 상태를 확인해주세요."
         let buttonTitle = "다시 시도하기"
-        showDialog(message: message, buttonTitle: buttonTitle, action: action)
+        showDialog(message: message, buttonTitle: buttonTitle, dismissAction: dismissAction, conformAction: conformAction)
     }
     
     func showIndicator() {
@@ -104,13 +105,10 @@ extension BaseViewController {
     }
     
     func hideIndicator() {
-        DispatchQueue.main.async {
-            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                  let window = windowScene.windows.first(where: { $0.isKeyWindow })
-            else { return }
-            window.subviews.filter({ $0 is UIActivityIndicatorView }).forEach { $0.removeFromSuperview() }
-        }
-
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first(where: { $0.isKeyWindow })
+        else { return }
+        window.subviews.filter({ $0 is UIActivityIndicatorView }).forEach { $0.removeFromSuperview() }
     }
     
     func showToast(_ text: String) {

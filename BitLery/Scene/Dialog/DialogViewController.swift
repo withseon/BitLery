@@ -22,8 +22,10 @@ final class DialogViewController: BaseViewController {
     private let disposeBag = DisposeBag()
     private let viewModel: DialogViewModel
     var confirmHandler: (() -> Void)?
+    var dismissHandler: (() -> Void)?
     
     init(message: String, buttonTitle: String) {
+        print("✨ Dialog VC init")
         messageLabel.text = message
         confirmLabel.text = buttonTitle
         viewModel = DialogViewModel()
@@ -110,6 +112,7 @@ extension DialogViewController {
             .bind(with: self) { owner, _ in
                 owner.dismiss(animated: true)
                 owner.confirmHandler?()
+                owner.dismissHandler?()
             }
             .disposed(by: disposeBag)
         
