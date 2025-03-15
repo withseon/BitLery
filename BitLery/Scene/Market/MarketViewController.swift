@@ -122,11 +122,9 @@ extension MarketViewController {
 // MARK: - bind 메서드
 extension MarketViewController {
     private func bind() {
-        let viewDidLoadTrigger = PublishRelay<Void>()
         let networkRetryTrigger = PublishRelay<Void>()
         let dismissDialogTrigger = PublishRelay<Void>()
-        let input = MarketViewModel.Input(viewDidLoadTrigger: viewDidLoadTrigger,
-                                          isTimerRunning: isTimerRunning,
+        let input = MarketViewModel.Input(isTimerRunning: isTimerRunning,
                                           tradePriceButtonTapped: tradePriceSortButton.rx.tap,
                                           rateButtonTapped: changedRateSortButton.rx.tap,
                                           accPriceButtonTapped: accPriceSortButton.rx.tap,
@@ -196,14 +194,17 @@ extension MarketViewController {
         output.dialogTrigger
             .drive(with: self) { owner, message in
                 guard let message else { return }
-                owner.showDialog(message: message)
-                dismissDialogTrigger.accept(())
+                owner.showDialog(message: message) {
+                    dismissDialogTrigger.accept(())
+                }
             }
             .disposed(by: disposeBag)
         
         output.monitorDialogTrigger
             .drive(with: self) { owner, _ in
                 owner.showMonitorDialog {
+                    dismissDialogTrigger.accept(())
+                } conformAction: {
                     networkRetryTrigger.accept(())
                 }
             }
@@ -214,7 +215,5 @@ extension MarketViewController {
                 owner.showToastOnPresentView()
             }
             .disposed(by: disposeBag)
-        
-        viewDidLoadTrigger.accept(())
     }
 }

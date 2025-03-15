@@ -19,19 +19,17 @@ final class MarketViewModel: BaseViewModel {
         case accPriceDesc
         case initial
     }
-    private let monitor = NetworkMonitorService.shared
     var disposeBag = DisposeBag()
     private var isFetched = false
-    private var isRunning = true
-    private let showIndicatorTrigger = BehaviorRelay(value: true)
+    private let showIndicatorTrigger = BehaviorRelay(value: false)
     private let tickerData = PublishRelay<[Ticker]>()
     private let dialogTrigger = PublishRelay<String?>()
     private let monitorDialogTrigger = PublishRelay<Void?>()
     private var isDismissDialog = true
     private let toastTrigger = PublishRelay<Void>()
+    private let connectNetwork = BehaviorRelay(value: true)
     
     struct Input {
-        let viewDidLoadTrigger: PublishRelay<Void>
         let isTimerRunning: BehaviorRelay<Bool>
         let tradePriceButtonTapped: ControlEvent<Void>
         let rateButtonTapped: ControlEvent<Void>
@@ -58,24 +56,28 @@ final class MarketViewModel: BaseViewModel {
         let changeTradePriceButton = BehaviorRelay(value: 0)
         let changeRateButton = BehaviorRelay(value: 0)
         let changeAccPriceButton = BehaviorRelay(value: 0)
+        let timer = Driver<Int>.interval(.seconds(5))
+            .startWith(-1)
         
-        input.viewDidLoadTrigger
-            .bind(with: self) { owner, _ in
-                owner.fetchTickerData(isFirst: true, isRetry: false)
+        connectNetwork
+            .observe(on: MainScheduler.asyncInstance)
+            .flatMapLatest { isConnect in
+                return isConnect ? timer.debug("Timer") : .empty()
             }
-            .disposed(by: disposeBag)
-        
-        input.isTimerRunning
+            .debug("RunningTimer")
+            .withLatestFrom(input.isTimerRunning)
             .bind(with: self) { owner, isRunning in
-                owner.isRunning = isRunning
+                print("✨")
+                if isRunning {
+                    owner.fetchTickerData()
+                }
             }
             .disposed(by: disposeBag)
         
         input.networkRetryTrigger
             .bind(with: self) { owner, _ in
-                if owner.isFetched {
-                    owner.fetchTickerData(isFirst: true, isRetry: true)
-                }
+                print("retry tapped")
+                owner.connectNetwork.accept(true)
             }
             .disposed(by: disposeBag)
         
@@ -192,51 +194,37 @@ final class MarketViewModel: BaseViewModel {
 }
 
 extension MarketViewModel {
-    private func fetchTickerData(isFirst: Bool, isRetry: Bool) {
-        guard monitor.isConnected else {
-            if isDismissDialog {
-                monitorDialogTrigger.accept(())
-                isDismissDialog = false
-            } else if isRetry {
-                toastTrigger.accept(())
-            }
-            return
+    private func fetchTickerData(isRetry: Bool = false) {
+        if !isFetched {
+            showIndicatorTrigger.accept(true)
         }
-        
         NetworkManager.executeFetch(
             router: UpbitRouter.ticker(dto: UpbitTickerRequest()),
             response: [UpbitTickerResponse].self
         )
         .bind(with: self) { owner, result in
-            if isFirst {
-                Driver<Int>.interval(.seconds(5))
-                    .asObservable()
-                    .startWith(-1)
-                    .withLatestFrom(Observable.just(owner.isRunning))
-                    .bind(with: owner) { owner, isRunning in
-                        if isRunning {
-                            owner.fetchTickerData(isFirst: false, isRetry: false)
-                        }
-                    }
-                    .disposed(by: owner.disposeBag)
-            }
             switch result {
             case .success(let response):
                 owner.tickerData.accept(response.map { $0.asTicker })
+                owner.isFetched = true
             case .failure(let error):
-                if owner.isDismissDialog {
-                    switch error {
-                    case .lostNetwork:
+                switch error {
+                case .lostNetwork:
+                    if owner.isDismissDialog {
                         owner.monitorDialogTrigger.accept(())
-                    default:
-                        owner.dialogTrigger.accept(error.message)
+                        owner.isDismissDialog = false
+                    } else {
+                        owner.toastTrigger.accept(())
                     }
-                    owner.isDismissDialog = false
+                    owner.connectNetwork.accept(false)
+                default:
+                    if owner.isDismissDialog {
+                        owner.dialogTrigger.accept(error.message)
+                        owner.isDismissDialog = false
+                    }
                 }
             }
             owner.showIndicatorTrigger.accept(false)
-            owner.isFetched = true
-            owner.isDismissDialog = true
         }
         .disposed(by: disposeBag)
     }
