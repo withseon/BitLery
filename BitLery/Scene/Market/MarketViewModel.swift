@@ -62,12 +62,10 @@ final class MarketViewModel: BaseViewModel {
         connectNetwork
             .observe(on: MainScheduler.asyncInstance)
             .flatMapLatest { isConnect in
-                return isConnect ? timer.debug("Timer") : .empty()
+                return isConnect ? timer : .empty()
             }
-            .debug("RunningTimer")
             .withLatestFrom(input.isTimerRunning)
             .bind(with: self) { owner, isRunning in
-                print("✨")
                 if isRunning {
                     owner.fetchTickerData()
                 }
@@ -76,7 +74,6 @@ final class MarketViewModel: BaseViewModel {
         
         input.networkRetryTrigger
             .bind(with: self) { owner, _ in
-                print("retry tapped")
                 owner.connectNetwork.accept(true)
             }
             .disposed(by: disposeBag)
@@ -194,7 +191,7 @@ final class MarketViewModel: BaseViewModel {
 }
 
 extension MarketViewModel {
-    private func fetchTickerData(isRetry: Bool = false) {
+    private func fetchTickerData() {
         if !isFetched {
             showIndicatorTrigger.accept(true)
         }
