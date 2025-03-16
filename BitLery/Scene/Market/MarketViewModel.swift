@@ -19,17 +19,22 @@ final class MarketViewModel: BaseViewModel {
         case accPriceDesc
         case initial
     }
+    private let monitor = NetworkMonitorService.shared
     var disposeBag = DisposeBag()
     private var isFetched = false
-    private let showIndicatorTrigger = BehaviorRelay(value: false)
+    private var isRunning = true
+    private let showIndicatorTrigger = BehaviorRelay(value: true)
     private let tickerData = PublishRelay<[Ticker]>()
     private let dialogTrigger = PublishRelay<String?>()
     private let monitorDialogTrigger = PublishRelay<Void?>()
     private var isDismissDialog = true
     private let toastTrigger = PublishRelay<Void>()
-    private let connectNetwork = BehaviorRelay(value: true)
+
+    private var lastUpdateTime: Date?  // 마지막 업데이트 시간 추적
+    private let updateInterval: TimeInterval = 5  // 5초
     
     struct Input {
+        let viewDidLoadTrigger: PublishRelay<Void>
         let isTimerRunning: BehaviorRelay<Bool>
         let tradePriceButtonTapped: ControlEvent<Void>
         let rateButtonTapped: ControlEvent<Void>
@@ -56,25 +61,33 @@ final class MarketViewModel: BaseViewModel {
         let changeTradePriceButton = BehaviorRelay(value: 0)
         let changeRateButton = BehaviorRelay(value: 0)
         let changeAccPriceButton = BehaviorRelay(value: 0)
-        let timer = Driver<Int>.interval(.seconds(5))
-            .startWith(-1)
         
-        connectNetwork
-            .observe(on: MainScheduler.asyncInstance)
-            .flatMapLatest { isConnect in
-                return isConnect ? timer : .empty()
+        input.viewDidLoadTrigger
+            .bind(with: self) { owner, _ in
+                owner.fetchTickerData(isFirst: true, isRetry: false)
             }
-            .withLatestFrom(input.isTimerRunning)
+            .disposed(by: disposeBag)
+        
+        input.isTimerRunning
+            .distinctUntilChanged()
+            .filter { $0 == true }  // 화면 복귀(true)일 때만
+            .skip(1)  // 최초 진입은 viewDidLoad에서 처리하므로 제외
+            .bind(with: self) { owner, _ in
+                owner.checkAndUpdateIfNeeded()
+            }
+            .disposed(by: disposeBag)
+
+        input.isTimerRunning
             .bind(with: self) { owner, isRunning in
-                if isRunning {
-                    owner.fetchTickerData()
-                }
+                owner.isRunning = isRunning
             }
             .disposed(by: disposeBag)
         
         input.networkRetryTrigger
             .bind(with: self) { owner, _ in
-                owner.connectNetwork.accept(true)
+                if owner.isFetched {
+                    owner.fetchTickerData(isFirst: true, isRetry: true)
+                }
             }
             .disposed(by: disposeBag)
         
@@ -191,37 +204,71 @@ final class MarketViewModel: BaseViewModel {
 }
 
 extension MarketViewModel {
-    private func fetchTickerData() {
-        if !isFetched {
-            showIndicatorTrigger.accept(true)
+    /// 화면 복귀 시 마지막 업데이트 시간 체크 후 조건부 업데이트
+    private func checkAndUpdateIfNeeded() {
+        guard let lastUpdate = lastUpdateTime else {
+            // 최초 업데이트가 없으면 즉시 호출
+            fetchTickerData(isFirst: false, isRetry: false)
+            return
         }
+
+        let elapsedTime = Date().timeIntervalSince(lastUpdate)
+
+        if elapsedTime >= updateInterval {
+            // 5초 이상 경과 → 즉시 업데이트
+            fetchTickerData(isFirst: false, isRetry: false)
+        }
+        // 5초 미만이면 아무것도 하지 않음 (타이머가 알아서 처리)
+    }
+
+    private func fetchTickerData(isFirst: Bool, isRetry: Bool) {
+        guard monitor.isConnected else {
+            if isDismissDialog {
+                monitorDialogTrigger.accept(())
+                isDismissDialog = false
+            } else if isRetry {
+                toastTrigger.accept(())
+            }
+            return
+        }
+        
         NetworkManager.executeFetch(
             router: UpbitRouter.ticker(dto: UpbitTickerRequest()),
             response: [UpbitTickerResponse].self
         )
         .bind(with: self) { owner, result in
+            if isFirst {
+                // 타이머 시작: 5초마다 실행
+                Driver<Int>.interval(.seconds(5))
+                    .asObservable()
+                    .startWith(-1)
+                    .bind(with: owner) { owner, _ in
+                        // 화면에 있을 때만 API 호출
+                        if owner.isRunning {
+                            owner.fetchTickerData(isFirst: false, isRetry: false)
+                        }
+                    }
+                    .disposed(by: owner.disposeBag)
+            }
             switch result {
             case .success(let response):
+                // ✅ 업데이트 성공 시 시간 기록
+                owner.lastUpdateTime = Date()
                 owner.tickerData.accept(response.map { $0.asTicker })
-                owner.isFetched = true
             case .failure(let error):
-                switch error {
-                case .lostNetwork:
-                    if owner.isDismissDialog {
+                if owner.isDismissDialog {
+                    switch error {
+                    case .lostNetwork:
                         owner.monitorDialogTrigger.accept(())
-                        owner.isDismissDialog = false
-                    } else {
-                        owner.toastTrigger.accept(())
-                    }
-                    owner.connectNetwork.accept(false)
-                default:
-                    if owner.isDismissDialog {
+                    default:
                         owner.dialogTrigger.accept(error.message)
-                        owner.isDismissDialog = false
                     }
+                    owner.isDismissDialog = false
                 }
             }
             owner.showIndicatorTrigger.accept(false)
+            owner.isFetched = true
+            owner.isDismissDialog = true
         }
         .disposed(by: disposeBag)
     }

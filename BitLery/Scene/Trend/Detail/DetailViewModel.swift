@@ -92,26 +92,24 @@ final class DetailViewModel: BaseViewModel {
         likeButtonTapped
             .throttle(.milliseconds(500), scheduler: MainScheduler.instance)
             .bind(with: self) { owner, _ in
-                if setStarButton.value {
-                    do {
+                do {
+                    if setStarButton.value {
                         try owner.realm.addItem(type: CoinTable.self, item: CoinTable(id: owner.coinInfo.id))
                         updateTrigger.accept(())
                         toastTrigger.accept("\(owner.coinInfo.name)이 즐겨찾기되었습니다")
-                    } catch {
-                        
-                    }
-                } else {
-                    do {
+                    } else {
                         if let coin = owner.realm.readTable(type: CoinTable.self).first(where: { $0.id == owner.coinInfo.id }) {
                             try owner.realm.deleteItem(type: CoinTable.self, item: coin)
                             updateTrigger.accept(())
                             toastTrigger.accept("\(owner.coinInfo.name)이 즐겨찾기에서 제거되었습니다")
                         }
-                    } catch {
-                        print(error)
                     }
+                } catch {
+                    // Realm 저장/삭제 실패 시 UI 롤백
+                    setStarButton.accept(!setStarButton.value)
+                    toastTrigger.accept("즐겨찾기 처리에 실패했습니다")
+                    print("❌ Realm Error:", error)
                 }
-                
             }
             .disposed(by: disposeBag)
         

@@ -6,17 +6,18 @@
 //
 
 import UIKit
-import DGCharts
+import Charts
 import RxCocoa
 import RxSwift
 import SnapKit
+import SwiftUI
 
 final class DetailViewController: BaseViewController {
     private let scrollView = UIScrollView()
     private let contentView = UIView()
     private let currentPriceLabel = UILabel()
     private let rateView = RateView()
-    private let chartView = LineChartView()
+    private let chartContainerView = UIView()
     private let updateLabel = UILabel()
     private let infoTitleLabel = TitleLabel("종목정보")
     private let infoMoreButton = MoreButton()
@@ -47,12 +48,22 @@ final class DetailViewController: BaseViewController {
         super.viewDidLoad()
         bind()
     }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        self.tabBarController?.tabBar.isHidden = true
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        self.tabBarController?.tabBar.isHidden = false
+    }
     
     override func configureHierarchy() {
         view.addSubview(navigationBar)
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
-        [currentPriceLabel, rateView, chartView, updateLabel,
+        [currentPriceLabel, rateView, chartContainerView, updateLabel,
          infoTitleLabel, infoMoreButton, infoBackgroundView,
          priceView, atPriceView,
          volumeTitleLabel, volumeMoreButton, volumeBackgroundView,
@@ -85,13 +96,13 @@ final class DetailViewController: BaseViewController {
             make.top.equalTo(currentPriceLabel.snp.bottom)
             make.leading.equalToSuperview().inset(20)
         }
-        chartView.snp.makeConstraints { make in
+        chartContainerView.snp.makeConstraints { make in
             make.top.equalTo(rateView.snp.bottom).offset(12)
-            make.horizontalEdges.equalToSuperview().inset(12)
+            make.horizontalEdges.equalToSuperview().inset(20)
             make.height.equalTo(200)
         }
         updateLabel.snp.makeConstraints { make in
-            make.top.equalTo(chartView.snp.bottom)
+            make.top.equalTo(chartContainerView.snp.bottom).offset(8)
             make.leading.equalToSuperview().inset(20)
         }
         infoTitleLabel.snp.makeConstraints { make in
@@ -269,51 +280,86 @@ extension DetailViewController {
 
 extension DetailViewController {
     func setChart(_ sparkline: [Double]) {
-        let dataSet = getChartDataSet(sparkline)
-        setChartUI(dataSet)
-        let chartData = LineChartData(dataSet: dataSet)
-        chartView.data = chartData
+        // 3개 간격으로 샘플링
+        let sampledData = sparkline.enumerated().compactMap { index, value -> (Int, Double)? in
+            if index % 3 == 0 || index == sparkline.count - 1 {
+                return (index, value)
+            }
+            return nil
+        }
+
+        // SwiftUI Chart를 UIHostingController로 임베딩
+        let chartView = PriceChartView(data: sampledData)
+        let hostingController = UIHostingController(rootView: chartView)
+        hostingController.view.backgroundColor = .clear
+
+        // 기존 차트 제거
+        chartContainerView.subviews.forEach { $0.removeFromSuperview() }
+
+        // 새 차트 추가
+        addChild(hostingController)
+        chartContainerView.addSubview(hostingController.view)
+
+        // SnapKit으로 정확한 레이아웃 설정
+        hostingController.view.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+
+        hostingController.didMove(toParent: self)
     }
-    
-    func getChartDataSet(_ sparkline: [Double]) -> LineChartDataSet {
-        var dataEntry = [ChartDataEntry]()
-        let dataLastIndex = sparkline.count - 1
-        for index in 0...dataLastIndex {
-            if index % 3 == 0 || index == dataLastIndex {
-                dataEntry.append(ChartDataEntry(x: Double(index), y: sparkline[index]))
+}
+
+// MARK: - SwiftUI Chart
+struct PriceChartView: View {
+    let data: [(Int, Double)]
+
+    private var yRange: ClosedRange<Double> {
+        let values = data.map { $0.1 }
+        let minValue = values.min() ?? 0
+        let maxValue = values.max() ?? 100
+
+        // 위아래 10% 여백 추가
+        let range = maxValue - minValue
+        let padding = range * 0.1
+
+        return (minValue - padding)...(maxValue + padding)
+    }
+
+    var body: some View {
+        Chart {
+            ForEach(Array(data.enumerated()), id: \.offset) { _, point in
+                // 라인 (먼저 그림)
+                LineMark(
+                    x: .value("Index", point.0),
+                    y: .value("Price", point.1)
+                )
+                .foregroundStyle(Color(uiColor: .mainTint))
+                .lineStyle(StrokeStyle(lineWidth: 1.5))
+                .interpolationMethod(.catmullRom)
+
+                // 그라데이션 영역 (라인 위에 그림)
+                AreaMark(
+                    x: .value("Index", point.0),
+                    yStart: .value("Start", yRange.lowerBound),
+                    yEnd: .value("End", point.1)
+                )
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [
+                            Color(uiColor: .mainTint).opacity(0.7),
+                            Color(uiColor: .mainTint).opacity(0.1)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .interpolationMethod(.catmullRom)
             }
         }
-        return LineChartDataSet(entries: dataEntry)
-    }
-    
-    func setChartUI(_ dataSet: LineChartDataSet) {
-        chartView.xAxis.drawGridLinesEnabled = false
-        chartView.xAxis.drawAxisLineEnabled = false
-        chartView.xAxis.drawLabelsEnabled = false
-        chartView.leftAxis.drawGridLinesEnabled = false
-        chartView.leftAxis.drawAxisLineEnabled = false
-        chartView.leftAxis.drawLabelsEnabled = false
-        chartView.rightAxis.enabled = false
-        chartView.drawGridBackgroundEnabled = false
-        chartView.drawBordersEnabled = false
-        chartView.legend.enabled = false
-        chartView.noDataText = "차트 데이터가 없습니다"
-        chartView.highlightPerDragEnabled = false
-        chartView.highlightPerTapEnabled = false
-
-        
-        let gradientColors = [UIColor.labelDown.cgColor,
-                              UIColor.labelDown.withAlphaComponent(0.1).cgColor] as CFArray
-        let gradient = CGGradient(colorsSpace: nil, colors: gradientColors, locations: [0.5, 0.0])
-        
-        dataSet.lineWidth = 1.5
-        dataSet.setColor(.labelDown)
-        dataSet.drawCirclesEnabled = false
-        dataSet.drawFilledEnabled = true
-        dataSet.fill = LinearGradientFill(gradient: gradient!, angle: 90)
-        dataSet.fillAlpha = 0.7
-        dataSet.mode = .cubicBezier
-        dataSet.cubicIntensity = 0.2
-        dataSet.drawValuesEnabled = false
+        .chartXAxis(.hidden)
+        .chartYAxis(.hidden)
+        .chartYScale(domain: yRange)
+        .chartLegend(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

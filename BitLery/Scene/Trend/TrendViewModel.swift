@@ -10,9 +10,10 @@ import RxCocoa
 import RxSwift
 
 final class TrendViewModel: BaseViewModel {
+    private let monitor = NetworkMonitorService.shared
     var disposeBag = DisposeBag()
-    private let connectNetwork = BehaviorRelay(value: true)
     private var isFetched = false
+    private var isRunning = true
     private let showIndicatorTrigger = BehaviorRelay(value: true)
     private let updateTimeText = BehaviorRelay(value: "")
     private let TrendCoinData = BehaviorRelay(value: [TrendCoin]())
@@ -20,9 +21,13 @@ final class TrendViewModel: BaseViewModel {
     private let dialogTrigger = PublishRelay<String?>()
     private let monitorDialogTrigger = PublishRelay<Void?>()
     private let toastTrigger = PublishRelay<Void>()
+
     private var isDismissDialog = true
+    private var lastUpdateTime: Date?  // 마지막 업데이트 시간 추적
+    private let updateInterval: TimeInterval = 600  // 10분 (600초)
     
     struct Input {
+        let viewDidLoadTrigger: PublishRelay<Void>
         let isTimerRunning: BehaviorRelay<Bool>
         let returnButtonTapped: ControlEvent<Void>
         let searchText: ControlProperty<String?>
@@ -47,26 +52,32 @@ final class TrendViewModel: BaseViewModel {
         let pushSearchTrigger = PublishRelay<String>()
         let pushDetailTrigger = PublishRelay<CoinBasicInfo>()
         let searchBarClearTigger = PublishRelay<Void>()
-        let timer = Driver<Int>.interval(.seconds(600))
-            .startWith(-1)
-        
-        connectNetwork
-            .observe(on: MainScheduler.asyncInstance)
-            .flatMapLatest { isConnect in
-                return isConnect ? timer : .empty()
+                
+        input.viewDidLoadTrigger
+            .bind(with: self) { owner, _ in
+                owner.fetchTrendData(isFirst: true, isRetry: false)
             }
-            .withLatestFrom(input.isTimerRunning)
-            .bind(with: self) { owner, isRunning in
-                if isRunning {
-                    owner.fetchTrendData()
-                }
+            .disposed(by: disposeBag)
+        
+        input.isTimerRunning
+            .distinctUntilChanged()
+            .filter { $0 == true }  // 화면 복귀(true)일 때만
+            .skip(1)  // 최초 진입은 viewDidLoad에서 처리하므로 제외
+            .bind(with: self) { owner, _ in
+                owner.checkAndUpdateIfNeeded()
             }
             .disposed(by: disposeBag)
 
+        input.isTimerRunning
+            .bind(with: self) { owner, isRunning in
+                owner.isRunning = isRunning
+            }
+            .disposed(by: disposeBag)
+        
         input.networkRetryTrigger
             .bind(with: self) { owner, _ in
                 if owner.isFetched {
-                    owner.connectNetwork.accept(true)
+                    owner.fetchTrendData(isFirst: true, isRetry: true)
                 }
             }
             .disposed(by: disposeBag)
@@ -113,40 +124,75 @@ final class TrendViewModel: BaseViewModel {
 
 // MARK: - 네트워크 통신
 extension TrendViewModel {
-    private func fetchTrendData() {
-        if !isFetched {
-            showIndicatorTrigger.accept(true)
+    /// 화면 복귀 시 마지막 업데이트 시간 체크 후 조건부 업데이트
+    private func checkAndUpdateIfNeeded() {
+        guard let lastUpdate = lastUpdateTime else {
+            // 최초 업데이트가 없으면 즉시 호출
+            fetchTrendData(isFirst: false, isRetry: false)
+            return
         }
+
+        let elapsedTime = Date().timeIntervalSince(lastUpdate)
+
+        if elapsedTime >= updateInterval {
+            // 10분 이상 경과 → 즉시 업데이트
+            fetchTrendData(isFirst: false, isRetry: false)
+        }
+        // 10분 미만이면 아무것도 하지 않음 (타이머가 알아서 처리)
+    }
+
+    private func fetchTrendData(isFirst: Bool, isRetry: Bool) {
+        guard monitor.isConnected else {
+            if isDismissDialog {
+                monitorDialogTrigger.accept(())
+                isDismissDialog = false
+            } else if isRetry {
+                toastTrigger.accept(())
+            }
+            return
+        }
+        
         NetworkManager.executeFetch(
             router: CoingeckoRouter.trend,
             response: CoingeckoTrendResponse.self
         )
         .bind(with: self) { owner, result in
+            if isFirst {
+                // 타이머 시작: 10분마다 실행
+                Driver<Int>.interval(.seconds(600))
+                    .asObservable()
+                    .startWith(-1)
+                    .bind(with: owner) { owner, _ in
+                        // 화면에 있을 때만 API 호출
+                        if owner.isRunning {
+                            owner.fetchTrendData(isFirst: false, isRetry: false)
+                        }
+                    }
+                    .disposed(by: owner.disposeBag)
+            }
             switch result {
             case .success(let response):
+                // ✅ 업데이트 성공 시 시간 기록
+                owner.lastUpdateTime = Date()
                 owner.updateTimeText.accept(FormatHelper.shared.trendUpdateTime(Date()))
                 owner.TrendCoinData.accept(response.coins.prefix(14).map { $0.asTrendCoins })
                 owner.trendNFTData.accept(response.nfts.map { $0.asTrendNFTs })
-                owner.isFetched = true
             case .failure(let error):
-                switch error {
-                case .lostNetwork:
-                    if owner.isDismissDialog {
+                if owner.isDismissDialog {
+                    switch error {
+                    case .lostNetwork:
                         owner.monitorDialogTrigger.accept(())
-                        owner.isDismissDialog = false
-                    } else {
-                        owner.toastTrigger.accept(())
-                    }
-                    owner.connectNetwork.accept(false)
-                default:
-                    if owner.isDismissDialog {
+                    default:
                         owner.dialogTrigger.accept(error.message)
-                        owner.isDismissDialog = false
                     }
+                    owner.isDismissDialog = false
                 }
             }
             owner.showIndicatorTrigger.accept(false)
+            owner.isFetched = true
+            owner.isDismissDialog = true
         }
         .disposed(by: disposeBag)
     }
 }
+
