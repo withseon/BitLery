@@ -116,8 +116,7 @@ extension TrendViewController {
         let viewDidLoadTrigger = PublishRelay<Void>()
         let networkRetryTrigger = PublishRelay<Void>()
         let dismissDialogTrigger = PublishRelay<Void>()
-        let input = TrendViewModel.Input(viewDidLoadTrigger: viewDidLoadTrigger,
-                                         isTimerRunning: isTimerRunning,
+        let input = TrendViewModel.Input(isTimerRunning: isTimerRunning,
                                          returnButtonTapped: searchBar.textField.rx.controlEvent(.editingDidEndOnExit),
                                          searchText: searchBar.textField.rx.text,
                                          selectedCoin: coinCollectionView.rx.modelSelected(TrendCoin.self),
@@ -188,14 +187,17 @@ extension TrendViewController {
         output.dialogTrigger
             .drive(with: self) { owner, message in
                 guard let message else { return }
-                owner.showDialog(message: message)
-                dismissDialogTrigger.accept(())
+                owner.showDialog(message: message) {
+                    dismissDialogTrigger.accept(())
+                }
             }
             .disposed(by: disposeBag)
         
         output.monitorDialogTrigger
             .drive(with: self) { owner, _ in
                 owner.showMonitorDialog {
+                    dismissDialogTrigger.accept(())
+                } conformAction: {
                     networkRetryTrigger.accept(())
                 }
             }
