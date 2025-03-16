@@ -108,11 +108,10 @@ extension SearchCoinCollectionViewCell {
     }
     
     func changeStarImage(_ isLiked: Bool) {
-        let config = UIImage.SymbolConfiguration(font: .boldSystemFont(ofSize: 16))
         if isLiked {
-            starImageView.image = UIImage(systemName: "star.fill", withConfiguration: config)
+            starImageView.image = UIImage(named: "star_fill")
         } else {
-            starImageView.image = UIImage(systemName: "star", withConfiguration: config)
+            starImageView.image = UIImage(named: "star")
         }
     }
 }

@@ -43,7 +43,7 @@ final class TrendViewController: BaseViewController {
     
     override func configureNavigation() {
         super.configureNavigation()
-        setNavigationLargeTitle("가상자산 / 심볼 검색")
+        setNavigationLargeTitle("트렌드")
     }
     
     override func configureHierarchy() {

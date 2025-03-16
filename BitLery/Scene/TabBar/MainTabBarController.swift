@@ -26,9 +26,9 @@ extension MainTabBarController {
             case .market:
                 return "거래소"
             case .rank:
-                return "코인정보"
+                return "트렌드"
             case .setting:
-                return "포트폴리오"
+                return "내 자산"
             }
         }
         
@@ -39,7 +39,7 @@ extension MainTabBarController {
             case .rank:
                 return UIImage(systemName: "chart.bar.fill")
             case .setting:
-                return UIImage(systemName: "star")
+                return UIImage(named: "star")
             }
         }
         

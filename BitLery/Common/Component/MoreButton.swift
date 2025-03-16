@@ -11,9 +11,9 @@ final class MoreButton: UIButton {
     override init(frame: CGRect) {
         super.init(frame: frame)
         var config = UIButton.Configuration.plain()
-        config.attributedTitle = AttributedString("더보기", attributes: AttributeContainer([.font: Resource.SystemFont.regular14]))
+        config.attributedTitle = AttributedString("더보기", attributes: AttributeContainer([.font: Resource.SystemFont.regular12]))
         config.baseForegroundColor = .labelSecondary
-        let symbolConfig = UIImage.SymbolConfiguration(font: .systemFont(ofSize: 12))
+        let symbolConfig = UIImage.SymbolConfiguration(font: .systemFont(ofSize: 8))
         config.image = UIImage(systemName: "chevron.right", withConfiguration: symbolConfig)
         config.imagePlacement = .trailing
         config.imagePadding = 4

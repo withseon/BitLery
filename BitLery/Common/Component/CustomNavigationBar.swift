@@ -90,8 +90,8 @@ final class CustomNavigationBar: BaseView {
         leftButton.setImage(UIImage(systemName: "arrow.left", withConfiguration: config), for: .normal)
         leftButton.tintColor = .labelMain
         
-        rightButton.setImage(UIImage(systemName: "star", withConfiguration: config), for: .normal)
-        rightButton.setImage(UIImage(systemName: "star.fill", withConfiguration: config), for: .selected)
+        rightButton.setImage(UIImage(named: "star"), for: .normal)
+        rightButton.setImage(UIImage(named: "star_fill"), for: .selected)
         rightButton.tintColor = .labelMain
         
         textField.borderStyle = .none
