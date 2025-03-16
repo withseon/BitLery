@@ -13,18 +13,20 @@ final class SearchViewModel: BaseViewModel {
     private let monitor = NetworkMonitorService.shared
     private let realm = RealmDataRepository.shared
     var disposeBag = DisposeBag()
-    
+
     private let showIndicatorTrigger = BehaviorRelay(value: true)
     private let searchCoinData = BehaviorRelay(value: [SearchCoin]())
     private let collectionHiddenTrigger = BehaviorRelay(value: false)
     private let dialogTrigger = PublishRelay<String?>()
     private let monitorDialogTrigger = PublishRelay<Void?>()
     private let networkToastTrigger = PublishRelay<Void>()
-    
+
     private let searchText: BehaviorRelay<String>
-    
+    let initialSearchText: String  // ViewController에서 접근 가능하도록 public
+
     init(_ searchText: String) {
         self.searchText = BehaviorRelay(value: searchText)
+        self.initialSearchText = searchText
     }
     
     struct Input {
@@ -71,22 +73,22 @@ final class SearchViewModel: BaseViewModel {
                 guard let index = owner.searchCoinData.value.firstIndex(where: { $0.id == id }) else { return }
                 let coinData = owner.searchCoinData.value
                 let coin = coinData[index]
-                if coin.isLiked {
-                    do {
+
+                do {
+                    if coin.isLiked {
                         try owner.realm.addItem(type: CoinTable.self, item: CoinTable(id: id))
                         toastTrigger.accept("\(coin.name)이 즐겨찾기되었습니다")
-                    } catch {
-                        print(error)
-                    }
-                } else {
-                    do {
+                    } else {
                         if let realmCoin = owner.realm.readTable(type: CoinTable.self).first(where: { $0.id == id }) {
                             try owner.realm.deleteItem(type: CoinTable.self, item: realmCoin)
                             toastTrigger.accept("\(coin.name)이 즐겨찾기에서 제거되었습니다")
                         }
-                    } catch {
-                        print(error)
                     }
+                } catch {
+                    // Realm 저장/삭제 실패 시 UI 롤백
+                    owner.rollbackLikeState(id: id)
+                    toastTrigger.accept("즐겨찾기 처리에 실패했습니다")
+                    print("❌ Realm Error:", error)
                 }
             }
             .disposed(by: disposeBag)
@@ -111,11 +113,26 @@ final class SearchViewModel: BaseViewModel {
             }
             .disposed(by: disposeBag)
         
-        // MARK: - 네비게이션으로 검색
+        // MARK: - 실시간 검색
+        input.searchText
+            .orEmpty
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .debounce(.milliseconds(500), scheduler: MainScheduler.instance)
+            .distinctUntilChanged()
+            .bind(with: self) { owner, text in
+                if !text.isEmpty {
+                    owner.searchText.accept(text)
+                } else {
+                    owner.collectionHiddenTrigger.accept(true)
+                    owner.searchCoinData.accept([])
+                }
+            }
+            .disposed(by: disposeBag)
+
+        // MARK: - 엔터 키 검색 (즉시 실행)
         input.returnButtonTapped
             .withLatestFrom(input.searchText.orEmpty)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .distinctUntilChanged()
             .bind(with: self) { owner, text in
                 if !text.isEmpty {
                     owner.searchText.accept(text)
@@ -144,6 +161,16 @@ final class SearchViewModel: BaseViewModel {
 }
 
 extension SearchViewModel {
+    /// UI에 반영된 좋아요 상태를 롤백 (Realm 작업 실패 시)
+    private func rollbackLikeState(id: String) {
+        guard let index = searchCoinData.value.firstIndex(where: { $0.id == id }) else { return }
+        var coinData = searchCoinData.value
+        var coin = coinData[index]
+        coin.isLiked.toggle() // 원래 상태로 되돌림
+        coinData[index] = coin
+        searchCoinData.accept(coinData)
+    }
+
     private func fetchSearchWithMonitor(_ text: String) {
         if !monitor.isConnected {
             monitorDialogTrigger.accept(())

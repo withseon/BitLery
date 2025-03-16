@@ -24,7 +24,19 @@ final class SearchViewController: BaseViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        configureTabView()  // bind() 전에 먼저 호출
+        navigationBar.textField.text = viewModel.initialSearchText  // 초기 검색어 설정
         bind()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        self.tabBarController?.tabBar.isHidden = true
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        self.tabBarController?.tabBar.isHidden = false
     }
     
     override func configureHierarchy() {
@@ -40,7 +52,7 @@ final class SearchViewController: BaseViewController {
         bodyView.snp.makeConstraints { make in
             make.top.equalTo(navigationBar.snp.bottom)
             make.horizontalEdges.equalToSuperview()
-            make.bottom.equalTo(view.safeAreaLayoutGuide)
+            make.bottom.equalToSuperview()
         }
     }
 }
@@ -69,7 +81,6 @@ extension SearchViewController {
         
         output.setUITrigger
             .bind(with: self) { owner, text in
-                owner.configureTabView()
                 owner.setNavigationTextField(text)
             }
             .disposed(by: disposeBag)
